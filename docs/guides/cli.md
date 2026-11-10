@@ -96,8 +96,8 @@ pip install trackers
     </tr>
     <tr>
       <td><code>trackers benchmark mcbyteplusplus</code></td>
-      <td>Run McByte++ on SoccerNet oracle detections and save MOT results, annotated frame images and FPS measurements.</td>
-      <td><a href="../../evaluations/benchmark-runner/#mcbyte-on-soccernet">SoccerNet benchmark guide</a></td>
+      <td>Run McByte++ on SoccerNet oracle or MOT17/DanceTrack/SportsMOT YOLOX detections; save MOT results, selected annotated frames and FPS measurements.</td>
+      <td><a href="../../evaluations/benchmark-runner/#mcbyte-on-soccernet">McByte++ benchmark guide</a></td>
     </tr>
   </tbody>
 </table>
@@ -537,7 +537,7 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
 
 === "mcbyteplusplus"
 
-    `trackers inspect mcbyteplusplus` replays detector boxes through `McBytePlusPlusTracker` with EdgeTAM masks always enabled. CMC defaults to enabled, using ORB at downscale 4. Dedicated McByte++ CMC and long-term re-identification are planned separately. Install `trackers[edgetam]`.
+    `trackers inspect mcbyteplusplus` replays detector boxes through `McBytePlusPlusTracker` with EdgeTAM masks always enabled. McByte++ includes dedicated conditional CMC, enabled by default with ORB at downscale 4. Long-term re-identification is planned separately. Install `trackers[edgetam]`.
 
     | Group          | Settings                                                                                                                                                                                                                                                    |
     | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

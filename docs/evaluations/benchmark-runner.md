@@ -14,7 +14,7 @@ Run a tracker over a complete benchmark test set — MOT17, DanceTrack, SportsMO
 - Select one or more datasets to run
 - Read the output layout, including the MOT17 submission files
 
-`trackers benchmark` is a command group, one subcommand per tracker. The steps below describe `trackers benchmark mcbyte`. For the SoccerNet-only McByte++ command, see [McByte++ on SoccerNet](#mcbyte-on-soccernet); it reads the original unzipped dataset layout and also saves visual outputs and timings.
+`trackers benchmark` is a command group, one subcommand per tracker. The steps below describe `trackers benchmark mcbyte`. For McByte++, see [its benchmark examples](#mcbyte-on-soccernet); that command reads unzipped sequence directories and also saves visual outputs and timings.
 
 !!! note "McByte specifics"
 
@@ -220,36 +220,31 @@ All arguments accepted by `trackers benchmark mcbyte`.
 
 Install `trackers[edgetam]` and point `--dataset_root` at the unzipped **test** directory. Each sequence must contain `seqinfo.ini`, `img1/`, and `det/det.txt`. Ground-truth files are reserved for separate evaluation and are not read by this command. Oracle detections supply boxes with confidence set to 1.0; input identity columns are ignored.
 
+The [common benchmark config](https://github.com/roboflow/trackers/blob/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json) ([download JSON](https://raw.githubusercontent.com/roboflow/trackers/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json)) provides shared settings for all four datasets. Supply the dataset name, input paths and visual sequence selection through CLI arguments. From a repository checkout:
+
 ```bash
 trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json \
+    --dataset soccernet \
     --dataset_root /path/to/SoccerNet/tracking/test \
-    --edgetam.device cuda \
-    --tracker.lost_track_buffer 36 \
-    --output_root outputs/mcbyteplusplus_benchmarks
+    --visual_sequences '[SNMOT-116,SNMOT-128]' \
+    --output_root outputs/mcbyteplusplus_benchmarks/soccernet_on
 ```
 
-This runs all discovered `SNMOT-*` directories. For a short CPU trial, add `--sequences '[SNMOT-116]' --max_frames 10 --edgetam.device cpu` instead. Omit `--max_frames` for complete sequences. Every declared frame is processed, including frames without detections; sequence length and playback FPS come from `seqinfo.ini` (25 FPS for SoccerNet).
+This saves text results for all discovered `SNMOT-*` directories and annotated frames for SNMOT-116 and SNMOT-128. For a short CPU trial, add `--sequences '[SNMOT-116]' --visual_sequences '[SNMOT-116]' --max_frames 10 --edgetam.device cpu` instead. Omit `--max_frames` for complete sequences. Every declared frame is processed, including frames without detections; sequence length and playback FPS come from `seqinfo.ini` (25 FPS for SoccerNet).
 
-EdgeTAM masks are always enabled. The `--edgetam.*`, `--cmc.*` and `--tracker.*` groups use the same settings as the [McByte++ inspector](../guides/inspect.md#inspect-mcbyte-with-oracle-detections): bounded EdgeTAM sessions of 200 images, ORB CMC at downscale 4, and enabled mask refresh and trust filtering by default. A fresh tracker is constructed for each sequence and reset on exit. Long-term re-ID and selective CMC are not part of this implementation yet.
+EdgeTAM masks are always enabled. The `--edgetam.*`, `--cmc.*` and `--tracker.*` groups expose the same options as the [McByte++ inspector](../guides/inspect.md#inspect-mcbyte-with-oracle-detections). The benchmark example selects conditional sparse optical flow at downscale 4, with EdgeTAM sessions bounded to 200 images and mask refreshing and exclusion enabled. The CLI default method remains ORB when no method is supplied. Conditional CMC supports all four methods; use `--cmc.conditional false` to select part 2's original shared CMC for the chosen method. Configurations record the selected mode and acceptance thresholds. A fresh tracker is constructed for each sequence and reset on exit. Long-term re-ID is not part of this implementation yet.
 
-The SoccerNet example explicitly sets `lost_track_buffer=36` to target the original research McByte++'s 30-frame lost-track buffer. Trackers uses 30 FPS reference units, so at SoccerNet's 25 FPS this gives `25 / 30 * 36 = 30` effective frames (1.2 seconds). The tracker and shared CLI default remains `30`, which would give 25 effective frames on SoccerNet.
+The benchmark example sets `tracker_frame_rate=30` and `tracker.lost_track_buffer=30` to target the original McByte++'s 30-frame lost-track buffer on every dataset: `30 / 30 * 30 = 30` processed frames. This is 1.2 seconds of SoccerNet's 25 FPS video. The reference-rate override does not change image selection or playback FPS. Without this override, the benchmark uses each sequence's native FPS; with the default buffer of `30`, SoccerNet would then have a 25-frame budget.
 
-A portable [benchmark config](https://github.com/roboflow/trackers/blob/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json) ([download JSON](https://raw.githubusercontent.com/roboflow/trackers/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json)) records the tracker settings and pinned EdgeTAM model used for the reported ON variant. From a repository checkout:
+With an installed package and no checkout, download the common JSON and pass its local path to `--config`; this example file is not included in the installed package. Replace the dataset path in either case. The separate SoccerNet inspection JSON has a different command schema; use `mcbyteplusplus-common.json` for this benchmark command.
 
-```bash
-trackers benchmark mcbyteplusplus \
-    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-soccernet.json \
-    --dataset_root /path/to/SoccerNet/tracking/test
-```
-
-With an installed package and no checkout, download the JSON and pass its local path to `--config`; these example files are not included in the installed package. Replace the dataset path in either case. The inspection JSON has a different command schema; use the benchmark JSON for this command.
-
-For the OFF/OFF variant, append `--tracker.enable_mask_refresh false --tracker.enable_mask_trust_filter false`. Both flags must be disabled: turning off refreshing alone leaves the mask-trust filter active. Keep the buffer and other settings unchanged when comparing the variants.
+For the variant with both mask refreshing and exclusion set as OFF, append `--tracker.enable_mask_refresh false --tracker.enable_mask_trust_filter false`. Both flags must be disabled: turning off refreshing alone leaves the mask-trust filter active. Keep the buffer and other settings unchanged when comparing the variants. To use conditional ORB, append `--cmc.method orb`.
 
 Each run creates a timestamped directory:
 
 ```text
-outputs/mcbyteplusplus_benchmarks/<timestamp>/
+outputs/mcbyteplusplus_benchmarks/soccernet_on/<timestamp>/
 ├── config.json              # reusable CLI settings, resolved device/revision
 ├── run.json                 # per-sequence and pooled timing, warnings, status
 ├── run.log                  # library diagnostics, including any OOM fallbacks
@@ -264,6 +259,77 @@ outputs/mcbyteplusplus_benchmarks/<timestamp>/
 ```
 
 Annotated JPEGs are enabled by default (`--save_frames true`), with one image per processed frame under `frames/<sequence>/`. Videos are disabled by default; `--save_video true` additionally writes `videos/<sequence>.mp4`. To save only text results and reports, use `--save_frames false --save_video false`; with both visual options off, the command skips drawing entirely. The CLI beta notice remains visible; captured Python warnings are saved in `run.json`.
+
+Use `--visual_sequences '[SNMOT-116,SNMOT-128]'` to restrict enabled visual outputs to those sequences while retaining text results for every sequence. This differs from `--sequences`, which restricts tracking itself. An empty visual list (`[]`) disables all visuals; the default (`null`) includes every selected sequence.
+
+### MOT17, DanceTrack and SportsMOT with YOLOX detections
+
+Select `--dataset mot17`, `dancetrack` or `sportsmot` and supply `--detection_root`. Each detection file must be named `<sequence>.txt` and contain `frame,x1,y1,x2,y2,confidence`. The command preserves these confidences, reads every frame declared in `seqinfo.ini` at the sequence's native FPS, and never reads ground-truth files.
+
+MOT17 uses canonical names such as `MOT17-01` for detection files, sequence selection and results. Image folders may include `-FRCNN`, `-DPM` or `-SDP`; duplicate videos are processed once, preferring FRCNN when available. Completed results are also copied into `submission/` under all three suffixes (21 files for the seven test videos). DanceTrack and SportsMOT retain their original sequence names.
+
+### Shared configuration for all four datasets
+
+The [common benchmark config](https://github.com/roboflow/trackers/blob/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json) ([download JSON](https://raw.githubusercontent.com/roboflow/trackers/develop/src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json)) explicitly lists every field in the `cmc`, `edgetam` and `tracker` groups: conditional sparse optical flow at downscale 4, mask refreshing and exclusion ON, the pinned EdgeTAM model on CUDA with 200-image sessions, and a 30-frame lost-track budget. It also sets the shared frame-limit and output options. The dataset name, input paths and visual sequence selection are supplied through the command line. The same JSON is used for all four datasets, with one command invocation per dataset.
+
+Each command below runs one complete test split, writes text results for every discovered sequence, and saves annotated frames for the specified visual sequences. Replace the placeholder paths with existing dataset and detection directories. Run the commands one after another to process all four datasets. With an installed package and no checkout, download the common JSON and replace `--config` with its local path.
+
+**SoccerNet — visual outputs for SNMOT-116 and SNMOT-128:**
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json \
+    --dataset soccernet \
+    --dataset_root /path/to/SoccerNet/tracking/test \
+    --visual_sequences '[SNMOT-116,SNMOT-128]' \
+    --output_root outputs/mcbyteplusplus_benchmarks/soccernet_on
+```
+
+**MOT17 — visual outputs for all seven test sequences:**
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json \
+    --dataset mot17 \
+    --dataset_root /path/to/MOT17/test \
+    --detection_root /path/to/detections/mot17/test \
+    --visual_sequences '[MOT17-01,MOT17-03,MOT17-06,MOT17-07,MOT17-08,MOT17-12,MOT17-14]' \
+    --output_root outputs/mcbyteplusplus_benchmarks/mot17_on
+```
+
+**DanceTrack — visual outputs for dancetrack0003 and dancetrack0091:**
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json \
+    --dataset dancetrack \
+    --dataset_root /path/to/dancetrack/test \
+    --detection_root /path/to/detections/dancetrack/test \
+    --visual_sequences '[dancetrack0003,dancetrack0091]' \
+    --output_root outputs/mcbyteplusplus_benchmarks/dancetrack_on
+```
+
+**SportsMOT — visual outputs for three selected test sequences:**
+
+```bash
+trackers benchmark mcbyteplusplus \
+    --config src/trackers/cli/benchmark/configs/mcbyteplusplus-common.json \
+    --dataset sportsmot \
+    --dataset_root /path/to/SportsMOT/test \
+    --detection_root /path/to/detections/sportsmot/test \
+    --visual_sequences '[v_-9kabh1K8UA_c008,v_-hhDbvY5aAM_c001,v_2Dnx8BpgUEs_c003]' \
+    --output_root outputs/mcbyteplusplus_benchmarks/sportsmot_on
+```
+
+For the OFF variant, append `--tracker.enable_mask_refresh false --tracker.enable_mask_trust_filter false` and choose an output root ending in `_off`. The common JSON leaves `visual_sequences` unspecified; omitting that CLI argument saves visuals for every processed sequence. Use `--visual_sequences '[]'` for text outputs and reports only.
+
+The common JSON sets the following values to reproduce the original McByte++'s **30-frame lost-track buffer on every dataset**:
+
+```bash
+--tracker_frame_rate 30 --tracker.lost_track_buffer 30
+```
+
+`--tracker_frame_rate` overrides only the reference FPS passed to the tracker. Its default, `null`, uses the sequence's native FPS. Every input image is still processed once, without timestamps or resampling, and saved videos retain their native playback FPS. Each sequence's report records the native `frame_rate`, the `tracker_frame_rate`, and the tracker's actual `effective_lost_track_buffer_frames`. Setting `lost_track_buffer=36` with native FPS gives 30 frames at 25 FPS, but gives different frame budgets at other frame rates.
 
 Each annotated image has colored masks and tracked boxes with ID labels. A fixed, left-aligned panel in the top-left corner shows the tracker name, original frame number, current output track IDs, internal mask-owner IDs and excluded mask IDs. Raw masks remain visible even when excluded from association, making the exclusion status useful for debugging.
 

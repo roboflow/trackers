@@ -1,10 +1,14 @@
 {
-    "dataset_root": "/path/to/SoccerNet/tracking/test",
     "sequences": null,
+    "tracker_frame_rate": 30.0,
     "cmc": {
         "enable": true,
-        "method": "orb",
-        "downscale": 4
+        "method": "sparseOptFlow",
+        "downscale": 4,
+        "conditional": true,
+        "minimum_matches": 12,
+        "minimum_scale": 0.3,
+        "maximum_scale": 3.0
     },
     "edgetam": {
         "model_id": "yonigozlan/EdgeTAM-hf",
@@ -15,7 +19,7 @@
         "mask_creation_bbox_overlap_threshold": 0.1
     },
     "tracker": {
-        "lost_track_buffer": 36,
+        "lost_track_buffer": 30,
         "track_activation_threshold": 0.7,
         "high_conf_det_threshold": 0.6,
         "minimum_consecutive_frames": 2,
