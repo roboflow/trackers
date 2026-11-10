@@ -184,6 +184,10 @@ If you use trackers in academic work, please cite the library:
 
 For citations of the individual tracking algorithms, follow the paper links in the [Algorithms](#algorithms) table.
 
+## Community Ports
+
+- **C++ Edge Port:** [roboflow-trackers-cpp](https://github.com/MatinRafiei/roboflow-trackers-cpp) is a community-maintained C++ port of SORT, ByteTrack, OC-SORT and BoT-SORT for real-time edge deployment (Raspberry Pi, NVIDIA Jetson). It is not maintained by Roboflow.
+
 ## Contributing
 
 We welcome contributions. Read our [contributor guidelines](https://github.com/roboflow/trackers/blob/release/stable/CONTRIBUTING.md) to get started.
