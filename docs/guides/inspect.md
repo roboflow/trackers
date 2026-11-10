@@ -156,7 +156,11 @@ trackers inspect mcbyteplusplus \
     --edgetam.device cpu --edgetam.max_session_frames 200
 ```
 
-This inspector always enables EdgeTAM masks. CMC is enabled by default with ORB at downscale 4 and can be disabled with `--cmc.enable false`. The mask switch is needed only when enabling the default backend through the Python API or the generic `trackers track` command.
+`trackers inspect mcbyteplusplus` requires the EdgeTAM mask pipeline at startup: it passes `enable_mask_manager=True` when constructing the tracker and provides no option to disable that pipeline. Mask refreshing and exclusion are independently configurable; disabling either leaves mask generation and propagation enabled. Individual tracks receive masks when eligible under the tracker's creation and occlusion rules. The tracker's existing out-of-memory fallback still applies during processing.
+
+The Python API makes mask-pipeline construction optional: `enable_mask_manager` defaults to `False`, while a supplied custom `mask_manager` is used regardless of that flag. To construct the default EdgeTAM pipeline, pass `enable_mask_manager=True` in Python. With the generic `trackers track --tracker mcbyteplusplus` command, pass `--tracker.enable_mask_manager true`; it is also disabled by default there.
+
+Conditional CMC is enabled by default with ORB at downscale 4 and also supports `sift`, `sparseOptFlow` and `ecc` through `--cmc.method`. Use `--cmc.enable false` to disable all CMC, or `--cmc.conditional false` to select the shared CMC implementation used in part 2. The [tracker guide](../trackers/mcbyteplusplus.md) explains the configurable acceptance checks, the state transformation inherited from the original McByte++, and mask lifecycle behavior.
 
 The SoccerNet example uses `lost_track_buffer=36` to target the original research McByte++'s 30-frame lost-track buffer at 25 FPS. Trackers scales this parameter from 30 FPS reference units: `25 / 30 * 36 = 30` effective frames (1.2 seconds). This is an explicit example setting; the tracker and shared CLI default stays `30`, giving 25 effective frames on SoccerNet.
 

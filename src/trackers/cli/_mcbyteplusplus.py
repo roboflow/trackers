@@ -30,11 +30,21 @@ class CMCOptions:
         enable: Enable camera-motion compensation.
         method: Motion estimator used by CMC.
         downscale: Image downscale factor used by CMC.
+        conditional: Enable conditional estimation and validated state
+            corrections for all methods; False selects the original shared CMC.
+        minimum_matches: Conditional ORB/SIFT candidate-match minimum before
+            statistical filtering. At least five must remain afterwards.
+        minimum_scale: Minimum accepted conditional affine column norm.
+        maximum_scale: Maximum accepted conditional affine column norm.
     """
 
     enable: bool = True
     method: CMCMethod = "orb"
     downscale: int = 4
+    conditional: bool = True
+    minimum_matches: int = 12
+    minimum_scale: float = 0.3
+    maximum_scale: float = 3.0
 
 
 @dataclass
