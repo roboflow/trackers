@@ -37,8 +37,7 @@ def _load_reid_encoder(source: str, *, device: str = "auto", architecture: str |
     trackers does not load it or torch.
 
     Args:
-        source: Model alias, ``hf://`` URL or local path, as accepted by
-            ``ReIDModel.from_pretrained``.
+        source: Model source, as accepted by ``ReIDModel.from_pretrained``.
         device: Device to run on: ``auto``, ``cpu``, ``cuda`` or ``mps``.
         architecture: Architecture of the weights, when ``source`` is a bare
             weights file.

@@ -21,6 +21,7 @@ import supervision as sv
 
 from trackers.core.botsort.tracker import BoTSORTTracker
 from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.utils.iou import GIoU
 from trackers.utils.state_representations import (
     BaseStateEstimator,
     XCYCSRStateEstimator,
@@ -60,6 +61,55 @@ def _state_shift_after_one_step(
     tracker.update(sv.Detections.empty(), cmc_transform=cmc_transform)
     baseline.update(sv.Detections.empty())
     return tracker.tracks[0].get_state_bbox() - baseline.tracks[0].get_state_bbox()
+
+
+class TestBoTSORTTrackerConstructorCompatibility:
+    """Keep positional calls supported by the published 2.6.1 constructor."""
+
+    @pytest.mark.parametrize("enable_cmc", [False, True])
+    def test_positional_constructor_matches_keywords(self, enable_cmc: bool) -> None:
+        """All fourteen legacy positional arguments configure and track like named arguments."""
+        iou = GIoU()
+        positional = BoTSORTTracker(
+            45, 25.0, 0.6, 2, 0.3, 0.4, 0.2, 0.5, enable_cmc, "orb", 4, False, XYXYStateEstimator, iou
+        )
+        keyword = BoTSORTTracker(
+            lost_track_buffer=45,
+            frame_rate=25.0,
+            track_activation_threshold=0.6,
+            minimum_consecutive_frames=2,
+            minimum_iou_threshold_first_assoc=0.3,
+            minimum_iou_threshold_second_assoc=0.4,
+            minimum_iou_threshold_unconfirmed_assoc=0.2,
+            high_conf_det_threshold=0.5,
+            enable_cmc=enable_cmc,
+            cmc_method="orb",
+            cmc_downscale=4,
+            instant_first_frame_activation=False,
+            state_estimator_class=XYXYStateEstimator,
+            iou=iou,
+        )
+
+        assert positional.instant_first_frame_activation is False
+        assert positional.state_estimator_class is XYXYStateEstimator
+        assert positional.iou is iou
+        if enable_cmc:
+            assert positional.cmc is not None and keyword.cmc is not None
+            assert positional.cmc.cfg == keyword.cmc.cfg
+            assert positional.cmc.cfg.method == "orb"
+            assert positional.cmc.cfg.downscale == 4
+        else:
+            assert positional.cmc is None and keyword.cmc is None
+
+        frame = _make_frame()
+        for step in range(3):
+            box = (100.0 + step, 100.0, 200.0 + step, 200.0)
+            positional_result = positional.update(_detection(box), frame=frame)
+            keyword_result = keyword.update(_detection(box), frame=frame)
+            np.testing.assert_array_equal(positional_result.tracker_id, keyword_result.tracker_id)
+            np.testing.assert_allclose(positional_result.xyxy, keyword_result.xyxy)
+        assert len(positional.tracks) == len(keyword.tracks) == 1
+        np.testing.assert_allclose(positional.tracks[0].get_state_bbox(), keyword.tracks[0].get_state_bbox())
 
 
 class TestBoTSORTTrackerLifecycle:

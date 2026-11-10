@@ -14,7 +14,7 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 Roboflow Trackers achieves 64.1 HOTA on MOT17 with McByte, benchmarked across four standard datasets, with ByteTrack and OC-SORT as zero-extra-dependency defaults. Apache 2.0, Python 3.10+.
 
-Current release: v2.6.0 — see the [changelog](changelog.md) for release history.
+Current release: v2.7.0 — see the [changelog](changelog.md) for release history.
 
 <video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="assets/track-objects-page-poster.webp" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
@@ -201,6 +201,36 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
     End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
+- **How to Track Objects with McByte**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb"><img src="assets/tutorials/mcbyte-sample.webp" alt="McByte tracker tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how to run RF-DETR detection with the McByte tracker and its SAM and Cutie masks.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb)
+
+- **How to Track Objects on a Moving Camera with BoT-SORT**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb"><img src="assets/tutorials/cmc-sample.webp" alt="BoT-SORT camera motion compensation tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how BoT-SORT's camera motion compensation keeps IDs steady when the camera moves.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb)
+
+- **How to Track Objects with BoT-SORT and Re-ID**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb"><img src="assets/tutorials/reid-sample.webp" alt="BoT-SORT Re-ID tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how BoT-SORT with Re-ID keeps football players' IDs when they leave the frame and come back.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb)
 
 - **How to Tune Tracker Hyperparameters**
 
