@@ -358,6 +358,65 @@ def test_other_state_representations_keep_their_warp_rules(
     np.testing.assert_allclose(track.state_estimator.kf.state_covariance, np.diag(expected_variances), atol=1e-12)
 
 
+@pytest.mark.parametrize("translation", [(0.0, 0.0), (5.0, -3.0)], ids=["identity", "translation"])
+def test_xyxy_identity_and_translation_preserve_corner_motion(translation: tuple[float, float]) -> None:
+    """Camera translation must not reverse a shrinking box or mix velocities between tracks."""
+    tracks = [
+        McBytePlusPlusTracklet(np.array([10.0, 20.0, 50.0, 80.0]), XYXYStateEstimator),
+        McBytePlusPlusTracklet(np.array([100.0, 200.0, 160.0, 290.0]), XYXYStateEstimator),
+    ]
+    # The first box shrinks; the second expands. Corner velocities have no min/max ordering requirement.
+    tracks[0].state_estimator.kf.state[4:, 0] = [1.0, 2.0, -1.0, -2.0]
+    tracks[1].state_estimator.kf.state[4:, 0] = [-2.0, -3.0, 4.0, 5.0]
+    before = np.stack([track.state_estimator.kf.state[:, 0].copy() for track in tracks])
+    covariances = [track.state_estimator.kf.state_covariance.copy() for track in tracks]
+    affine = np.column_stack((np.eye(2), translation))
+    ConditionalCMC().apply_batch(affine, tracks)
+    expected = before.copy()
+    expected[:, :4] += np.tile(translation, 2)
+    for track, state, covariance in zip(tracks, expected, covariances):
+        np.testing.assert_array_equal(track.state_estimator.kf.state[:, 0], state)
+        np.testing.assert_array_equal(track.state_estimator.kf.state_covariance, covariance)
+        # Check the next real Kalman prediction as well as the immediate CMC result.
+        track.state_estimator.predict()
+        np.testing.assert_allclose(track.get_state_bbox(), state[:4] + state[4:])
+
+
+@pytest.mark.parametrize(
+    "affine,expected_box,expected_velocity",
+    [
+        pytest.param(
+            [[0.0, -1.0, 5.0], [1.0, 0.0, -3.0]],
+            [-75.0, 7.0, -15.0, 47.0],
+            [4.0, 1.0, -2.0, -3.0],
+            id="quarter-turn",
+        ),
+        pytest.param(
+            [[1.0, 0.5, 5.0], [-0.25, 1.0, -3.0]],
+            [25.0, 4.5, 95.0, 74.5],
+            [2.0, 2.75, -5.0, -4.25],
+            id="shear",
+        ),
+        pytest.param(
+            [[-1.0, 0.0, 60.0], [0.0, 1.0, 0.0]],
+            [10.0, 20.0, 50.0, 80.0],
+            [3.0, 2.0, -1.0, -4.0],
+            id="reflection",
+        ),
+    ],
+)
+def test_xyxy_edge_velocities_follow_transformed_corners(
+    affine: list[list[float]], expected_box: list[float], expected_velocity: list[float]
+) -> None:
+    """Each enclosing edge keeps the velocity of its spatial corner, even when axes mix or reverse."""
+    track = McBytePlusPlusTracklet(np.array([10.0, 20.0, 50.0, 80.0]), XYXYStateEstimator)
+    track.state_estimator.kf.state[4:, 0] = [1.0, 2.0, -3.0, -4.0]
+    # Hand-computed expectations deliberately differ from sorting the transformed velocities.
+    ConditionalCMC().apply_batch(np.array(affine), [track])
+    np.testing.assert_allclose(track.get_state_bbox(), expected_box)
+    np.testing.assert_allclose(track.state_estimator.kf.state[4:, 0], expected_velocity)
+
+
 @pytest.mark.parametrize(
     "settings",
     [

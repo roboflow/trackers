@@ -787,14 +787,15 @@ class ConditionalCMC:
           covariance as ``M @ P @ M.T``. This preserves the research McByte++
           size approximation, including its limitations under rotation.
         - XYXY: Transform all four box corners and take their axis-aligned
-          enclosure. Use the same enclosure operation for the corner
-          velocities, without translation. Transform covariance with the
-          block-diagonal linear map only when both off-diagonal entries of
-          the 2x2 linear part are within 1e-6 of zero; otherwise retain it.
+          enclosure. For each enclosing edge, use the corresponding spatial
+          corner's transformed velocity, without translation. Transform
+          covariance with the block-diagonal linear map only when both
+          off-diagonal entries of the 2x2 linear part are within 1e-6 of zero;
+          otherwise retain it.
         - XCYCSR: Transform the centre and its velocity, adding translation
           only to the centre. Keep area, aspect ratio and area velocity
           unchanged. Apply the corresponding block-diagonal covariance
-          transformation. This and the XYXY mapping follow the existing CMC.
+          transformation. This mapping follows the existing CMC.
 
         Compute candidates in temporary batch arrays before changing any
         live filter. Reject a track's candidate if its state or covariance
@@ -879,8 +880,9 @@ def _warp_kalman_states(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Transform owned batch buffers before per-track acceptance.
 
-    XCYCWH retains the research size/velocity approximation. Other layouts use the same mappings as the existing CMC
-    utility. Inputs are temporary arrays, so invalid results can be discarded without rolling back live filters.
+    XCYCWH retains the original McByte++ size/velocity approximation. XYXY velocities follow the spatial corners
+    defining the transformed box. Inputs are temporary arrays, so invalid results can be discarded without rolling back
+    live filters.
     """
     rot_mtx = affine_mtx[:2, :2].astype(np.float64)
     translation = affine_mtx[:2, 2].astype(np.float64)
@@ -894,20 +896,19 @@ def _warp_kalman_states(
         return states, covariances
 
     if is_xyxy:
-        # XYXY boxes must remain axis-aligned after CMC. For transforms with
-        # rotation/reflection/shear, applying the affine matrix only to the
-        # top-left and bottom-right corners can invert the box or produce
-        # invalid geometry. Transform all four corners, then rebuild the
-        # enclosing axis-aligned box with per-axis min/max.
-        states[:, 0], states[:, 1], states[:, 2], states[:, 3] = ConditionalCMC.warp_xyxy_corners(
-            states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
-        )
-        # Keep XYXY velocity ordering valid under mixed-axis transforms by
-        # applying the same corner-wise normalization to the paired velocity
-        # components.
-        states[:, 4], states[:, 5], states[:, 6], states[:, 7] = ConditionalCMC.warp_xyxy_corners(
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7], rot_mtx
-        )
+        # Transform top-left, top-right, bottom-right and bottom-left corners,
+        # retaining each corner's velocity before rebuilding the axis-aligned box.
+        corner_indices = np.array([[0, 1], [2, 1], [2, 3], [0, 3]])
+        corners = states[:, corner_indices] @ rot_mtx.T + translation
+        velocities = states[:, corner_indices + 4] @ rot_mtx.T
+        lo = corners.argmin(axis=1)[:, None, :]
+        hi = corners.argmax(axis=1)[:, None, :]
+        states[:, :2] = np.take_along_axis(corners, lo, axis=1)[:, 0]
+        states[:, 2:4] = np.take_along_axis(corners, hi, axis=1)[:, 0]
+        # Velocity extrema are unrelated to spatial extrema: sorting velocities
+        # independently would turn a shrinking box into an expanding one.
+        states[:, 4:6] = np.take_along_axis(velocities, lo, axis=1)[:, 0]
+        states[:, 6:8] = np.take_along_axis(velocities, hi, axis=1)[:, 0]
     else:
         # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
         states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation
