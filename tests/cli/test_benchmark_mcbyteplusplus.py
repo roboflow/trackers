@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""SoccerNet benchmark outputs, timing boundaries, configuration and failure recovery."""
+"""Dataset input conventions, selective outputs, timing boundaries and failure recovery."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import supervision as sv
 from trackers.cli._parser import _CLIParser
 from trackers.cli.benchmark import BENCHMARK_COMMANDS
 from trackers.cli.benchmark import mcbyteplusplus as module
-from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig
+from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
 
 
 @pytest.fixture
@@ -52,10 +52,14 @@ def _install_tracker(monkeypatch: pytest.MonkeyPatch, error: BaseException | Non
 
         def __init__(self, **kwargs: Any) -> None:
             self.options = kwargs
+            self.maximum_frames_without_update = McBytePlusPlusTracker._compute_maximum_frames_without_update(
+                kwargs["lost_track_buffer"], kwargs["frame_rate"]
+            )
             self.mask_manager = SimpleNamespace(
                 mask_propagator=SimpleNamespace(device="cpu", model_revision="resolved-commit")
             )
             self.frames: list[np.ndarray] = []
+            self.detections: list[sv.Detections] = []
             self.reset_called = False
             instances.append(self)
 
@@ -64,8 +68,7 @@ def _install_tracker(monkeypatch: pytest.MonkeyPatch, error: BaseException | Non
                 raise error
             self.frames.append(frame.copy())
             assert detections.tracker_id is None
-            if len(detections):
-                np.testing.assert_array_equal(detections.confidence, np.ones(len(detections)))
+            self.detections.append(detections)
             detections.tracker_id = np.full(len(detections), 7)
             return detections
 
@@ -110,10 +113,15 @@ def test_benchmark_saves_complete_sequences_and_replayable_config(
     for instance, sequence in zip(instances, report["sequences"]):
         assert instance.reset_called
         assert len(instance.frames) == 3
+        np.testing.assert_array_equal(instance.detections[0].confidence, [1.0])
         np.testing.assert_array_equal(instance.frames[0][0, 0], [230, 10, 20])
         assert instance.options["enable_mask_manager"] is True
         assert instance.options["enable_mask_trust_filter"] is True
         assert instance.options["cmc_downscale"] == 4
+        assert instance.options["enable_conditional_cmc"] is True
+        assert instance.options["cmc_minimum_matches"] == 12
+        assert instance.options["cmc_minimum_scale"] == 0.3
+        assert instance.options["cmc_maximum_scale"] == 3.0
         assert sequence["resolved_revision"] == "resolved-commit"
         assert sequence["processed_frames"] == sequence["expected_frames"] == 3
         rows = [row.split(",") for row in (run / "results" / f"{sequence['name']}.txt").read_text().splitlines()]
@@ -149,6 +157,10 @@ def test_benchmark_saves_complete_sequences_and_replayable_config(
                 "2",
                 "--cmc.downscale",
                 "2",
+                "--cmc.conditional",
+                "false",
+                "--cmc.minimum_matches",
+                "16",
                 "--tracker.enable_mask_refresh",
                 "false",
             ]
@@ -158,7 +170,142 @@ def test_benchmark_saves_complete_sequences_and_replayable_config(
     assert restored.edgetam.device == "cpu"
     assert restored.max_frames == 2
     assert restored.cmc.downscale == 2
+    assert restored.cmc.conditional is False
+    assert restored.cmc.minimum_matches == 16
     assert restored.tracker.enable_mask_refresh is False
+
+
+@pytest.mark.parametrize("native_fps", [14, 20, 25, 30])
+def test_tracker_rate_override_keeps_30_frame_buffer_and_native_video_fps(
+    dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, native_fps: int
+) -> None:
+    """Match the original McByte++'s 30-frame lost-track buffer while preserving native video FPS."""
+    (dataset / "SNMOT-116/seqinfo.ini").write_text(f"[Sequence]\nseqLength=3\nframeRate={native_fps}\n")
+    instances = _install_tracker(monkeypatch)
+    output_root = tmp_path / "runs"
+    assert (
+        module.benchmark_command(
+            dataset,
+            sequences=["SNMOT-116"],
+            tracker_frame_rate=30,
+            tracker=module.TrackerOptions(lost_track_buffer=30),
+            save_video=True,
+            save_frames=False,
+            output_root=output_root,
+        )
+        == 0
+    )
+    options = instances[0].options
+    assert options["frame_rate"] == options["lost_track_buffer"] == 30
+    actual_tracker = McBytePlusPlusTracker(
+        frame_rate=options["frame_rate"],
+        lost_track_buffer=options["lost_track_buffer"],
+        enable_mask_manager=False,
+        enable_cmc=False,
+    )
+    assert actual_tracker.maximum_frames_without_update == 30
+    run = next(output_root.iterdir())
+    sequence = json.loads((run / "run.json").read_text())["sequences"][0]
+    assert sequence["frame_rate"] == native_fps
+    assert sequence["tracker_frame_rate"] == 30
+    assert sequence["effective_lost_track_buffer_frames"] == 30
+    assert sequence["processed_frames"] == 3
+    cap = cv2.VideoCapture(str(run / "videos/SNMOT-116.mp4"))
+    try:
+        assert cap.get(cv2.CAP_PROP_FPS) == native_fps
+        assert cap.get(cv2.CAP_PROP_FRAME_COUNT) == 3
+    finally:
+        cap.release()
+    parser = _CLIParser(exit_on_error=False)
+    parser.add_argument("--config", action="config")
+    parser.add_function_arguments(module.benchmark_command)
+    restored = parser.instantiate_classes(parser.parse_args(["--config", str(run / "config.json")]))
+    assert restored.tracker_frame_rate == 30
+    assert restored.tracker.lost_track_buffer == 30
+
+
+@pytest.mark.parametrize(
+    ("dataset_name", "folder", "name"),
+    [
+        ("mot17", "MOT17-01-FRCNN", "MOT17-01"),
+        ("dancetrack", "dancetrack0003", "dancetrack0003"),
+        ("sportsmot", "v_example_0", "v_example_0"),
+    ],
+)
+def test_yolox_confidences_coordinates_and_submission_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dataset_name: Any, folder: str, name: str
+) -> None:
+    """Use real detector scores, native FPS and full length without reading GT or public MOT detections."""
+    sequence = tmp_path / "test" / folder
+    (sequence / "img1").mkdir(parents=True)
+    (sequence / "seqinfo.ini").write_text("[Sequence]\nseqLength=2\nframeRate=14\n")
+    for number in (1, 2):
+        assert cv2.imwrite(str(sequence / "img1" / f"{number:08d}.jpg"), np.zeros((48, 64, 3), dtype=np.uint8))
+    detection_root = tmp_path / "detections"
+    detection_root.mkdir()
+    (detection_root / f"{name}.txt").write_text("1,5,6,15,18,0.27\n1,20,10,30,24,0.91\n")
+    if dataset_name == "mot17":
+        # A second detector folder must not cause a second tracking run or override FRCNN.
+        (sequence.parent / "MOT17-01-DPM").mkdir()
+    instances = _install_tracker(monkeypatch)
+    output_root = tmp_path / "runs"
+    assert (
+        module.benchmark_command(
+            sequence.parent,
+            dataset=dataset_name,
+            detection_root=detection_root,
+            output_root=output_root,
+            save_frames=False,
+        )
+        == 0
+    )
+    assert len(instances) == 1
+    tracker = instances[0]
+    assert tracker.options["frame_rate"] == 14
+    assert len(tracker.frames) == 2
+    assert len(tracker.detections[1]) == 0
+    np.testing.assert_allclose(tracker.detections[0].confidence, [0.27, 0.91])
+    np.testing.assert_allclose(tracker.detections[0].xyxy, [[5, 6, 15, 18], [20, 10, 30, 24]])
+    run = next(output_root.iterdir())
+    text = (run / "results" / f"{name}.txt").read_text()
+    assert text
+    report = json.loads((run / "run.json").read_text())
+    assert report["all_discovered_sequences_completed"] is True
+    assert report["sequences"][0]["confidence_override"] is None
+    if dataset_name == "mot17":
+        assert {p.name for p in (run / "submission").iterdir()} == {
+            f"{name}-{detector}.txt" for detector in ("DPM", "FRCNN", "SDP")
+        }
+        assert all(p.read_text() == text for p in (run / "submission").iterdir())
+    else:
+        assert not (run / "submission").exists()
+
+
+def test_visual_selection_keeps_all_text_results(
+    dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only selected sequences render, while every sequence still advances and writes text."""
+    _install_tracker(monkeypatch)
+    render_calls: list[int] = []
+    original = module.visualize_mcbyteplusplus
+
+    def render(*args: Any) -> np.ndarray:
+        render_calls.append(args[1])
+        return original(*args)
+
+    monkeypatch.setattr(module, "visualize_mcbyteplusplus", render)
+    output_root = tmp_path / "runs"
+    assert module.benchmark_command(dataset, output_root=output_root, visual_sequences=["SNMOT-117"]) == 0
+    run = next(output_root.iterdir())
+    assert render_calls == [1, 2, 3]
+    assert {p.name for p in (run / "results").iterdir()} == {"SNMOT-116.txt", "SNMOT-117.txt"}
+    assert {p.name for p in (run / "frames").iterdir()} == {"SNMOT-117"}
+    parser = _CLIParser(exit_on_error=False)
+    parser.add_argument("--config", action="config")
+    parser.add_function_arguments(module.benchmark_command)
+    replay = parser.instantiate_classes(parser.parse_args(["--config", str(run / "config.json")]))
+    assert replay.visual_sequences == ["SNMOT-117"]
+    assert replay.dataset == "soccernet"
 
 
 @pytest.mark.parametrize("interrupt", [False, True], ids=["failure_continues", "interrupt_stops"])
@@ -216,7 +363,10 @@ def test_subset_and_frame_limit_are_not_reported_as_full_dataset(
     assert not (run / "videos").exists()
 
 
-@pytest.mark.parametrize("problem", ["missing_metadata", "unknown_sequence", "bad_limit", "bad_rate"])
+@pytest.mark.parametrize(
+    "problem",
+    ["missing_metadata", "unknown_sequence", "bad_limit", "bad_rate", "zero_tracker_rate", "nan_tracker_rate"],
+)
 def test_invalid_dataset_or_options_fail_before_model_loading(
     dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, problem: str
 ) -> None:
@@ -228,6 +378,10 @@ def test_invalid_dataset_or_options_fail_before_model_loading(
         kwargs["sequences"] = ["SNMOT-999"]
     elif problem == "bad_limit":
         kwargs["max_frames"] = 0
+    elif problem == "zero_tracker_rate":
+        kwargs["tracker_frame_rate"] = 0
+    elif problem == "nan_tracker_rate":
+        kwargs["tracker_frame_rate"] = float("nan")
     else:
         (dataset / "SNMOT-116/seqinfo.ini").write_text("[Sequence]\nseqLength=3\nframeRate=nan\n")
     assert module.benchmark_command(dataset, output_root=tmp_path / "runs", **kwargs) == 1

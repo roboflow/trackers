@@ -4,9 +4,13 @@ description: Track objects with McByte++ and streaming EdgeTAM masks, including 
 
 # McByte++
 
+!!! note "Documentation in progress"
+
+    This guide is incomplete and covers the functionality implemented so far. It will be expanded and finalized once McByte++ development, including long-term re-identification, is complete. Usage examples and parameter descriptions are kept aligned with the current implementation throughout development.
+
 `McBytePlusPlusTracker` is an independent tracker alongside `McByteTracker`. It combines three-stage box association with overlapping EdgeTAM masks. EdgeTAM generates and propagates the masks using one model; masks can condition ambiguous associations without confidence scores.
 
-This part implements the tracker and its mask lifecycle. Long-term re-identification and selective camera motion compensation are planned separately. Both mask-refresh/trust-filter variants have been evaluated on all 49 SoccerNet-tracking 2022 test sequences using oracle detections. These results reflect the functionality implemented so far; see [PR #644](https://github.com/roboflow/trackers/pull/644) for the scores and settings.
+The implementation includes the tracker, mask lifecycle and conditional camera motion compensation. Long-term re-identification is planned separately. Part 2 evaluated both mask-refresh/trust-filter variants on all 49 SoccerNet-tracking 2022 test sequences using oracle detections and the original CMC. Those results do not validate the new conditional CMC; see [PR #644](https://github.com/roboflow/trackers/pull/644) for their scores and settings.
 
 ## Python usage
 
@@ -31,11 +35,17 @@ tracked = tracker.update(detections, frame=frame_bgr)
 
 The public API takes **BGR uint8** images. Camera motion compensation receives BGR; the tracker converts to RGB for the mask pipeline. Camera motion compensation defaults to enabled, using ORB with downscale 4, and can be disabled with `enable_cmc=False`.
 
+Conditional CMC is enabled by default for `orb`, `sift`, `sparseOptFlow` and `ecc`. The independent `trackers.utils.conditional_cmc.ConditionalCMC` component follows the existing CMC interface and estimates motion on every accepted image, with no cached-transform interval. ORB and SIFT require `cmc_minimum_matches=12` candidate correspondences before statistical filtering and at least five afterwards. All methods reject non-finite transforms or affine column norms outside `[cmc_minimum_scale, cmc_maximum_scale]`, defaulting to `[0.3, 3.0]`.
+
+For the default centre/width/height state, accepted corrections retain the research transformation of centre, dimensions, velocities and covariance. A non-finite candidate or non-positive width/height leaves that track's prediction and covariance unchanged; valid corrections for other tracks still apply. This protects against invalid states while retaining the research approximation for positive dimensions. It does not compute the geometric enclosing box under rotation. Other state representations retain their existing transformation rules. Unavailable features return identity; expected OpenCV failures return identity and clear the reference. Reset and image-resolution changes start a fresh reference.
+
+Use `enable_conditional_cmc=False` to select part 2's original shared CMC behavior for any method. The inspector and benchmark expose this as `--cmc.conditional false`, alongside `--cmc.minimum_matches`, `--cmc.minimum_scale` and `--cmc.maximum_scale`. Saved configurations record these settings. Older configurations without the new fields use the new defaults; explicitly disable conditional CMC when reproducing part 2.
+
 `enable_mask_manager=False` is the Python API default. With no custom `mask_manager`, this runs box association without constructing or loading EdgeTAM. Set `enable_mask_manager=True` to construct the default EdgeTAM pipeline. A supplied `mask_manager` is used regardless of the flag and skips automatic EdgeTAM construction. `edgetam_config` configures only automatic construction: it requires `enable_mask_manager=True` and cannot accompany a custom manager.
 
 `enable_mask_refresh` and `enable_mask_trust_filter` both default to `True`, but neither creates a mask manager; they take effect only when one is active. A custom manager's propagator must provide a callable `refresh_masks` method when refresh is enabled. Set `enable_mask_refresh=False` for a propagator without this capability.
 
-`lost_track_buffer` defaults to `30` in both the tracker and the shared CLI options. Trackers expresses this budget in 30 FPS units and scales it by the input frame rate. The SoccerNet examples explicitly use `36` to target the original research McByte++'s 30-frame lost-track buffer at SoccerNet's 25 FPS: `25 / 30 * 36 = 30` frames (1.2 seconds). Leaving the Trackers default at `30` would give 25 frames (one second) on SoccerNet.
+`lost_track_buffer` defaults to `30` in both the tracker and the shared CLI options. Trackers expresses this budget in 30 FPS units and scales it by the reference frame rate passed to the tracker. The SoccerNet inspection example uses `36` with the native 25 FPS rate: `25 / 30 * 36 = 30` frames (1.2 seconds). The [shared benchmark configuration](../evaluations/benchmark-runner.md#shared-configuration-for-all-four-datasets), `mcbyteplusplus-common.json`, instead sets `tracker_frame_rate=30` and `tracker.lost_track_buffer=30`, giving the original McByte++'s 30-frame budget on every dataset. Both settings give 30 frames on SoccerNet. The benchmark reference-rate override does not change image selection or video playback FPS. Using the default buffer of `30` with SoccerNet's native 25 FPS would give 25 frames (one second).
 
 ## Mask lifecycle
 
@@ -77,6 +87,6 @@ The default Hugging Face model is `yonigozlan/EdgeTAM-hf`, pinned to revision `c
 
 Use the [SoccerNet inspection example](../guides/inspect.md#inspect-mcbyte-with-oracle-detections) to run a short CPU sequence. `trackers inspect mcbyteplusplus` always enables EdgeTAM masks and defaults to CMC enabled with ORB at downscale 4. Oracle detections supply boxes; their identity column is never passed into the tracker. Ground-truth identities belong to evaluation.
 
-For full sequences or the complete SoccerNet test directory, use [`trackers benchmark mcbyteplusplus`](../evaluations/benchmark-runner.md#mcbyte-on-soccernet). It saves MOT results, annotated frame images and per-sequence/pooled FPS for later evaluation. Annotated videos can also be enabled. This is an output-generation command; HOTA, IDF1 and MOTA are computed separately.
+For full sequences or complete test splits, use [`trackers benchmark mcbyteplusplus`](../evaluations/benchmark-runner.md#mcbyte-on-soccernet). The [shared configuration and dataset commands](../evaluations/benchmark-runner.md#shared-configuration-for-all-four-datasets) cover SoccerNet, MOT17, DanceTrack and SportsMOT. The command saves MOT results, annotated frame images and per-sequence/pooled FPS for later evaluation. Annotated videos can also be enabled. This is an output-generation command; HOTA, IDF1 and MOTA are computed separately.
 
 See the [API reference](../api/trackers.md#mcbyte_1) for all constructor settings.

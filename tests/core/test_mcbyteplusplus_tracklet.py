@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Independent McByte++ motion, noise, timing and camera-compensation contracts."""
+"""Independent McByte++ motion, noise and timing contracts."""
 
 import numpy as np
 import pytest
@@ -36,25 +36,17 @@ def tracklet(bbox: np.ndarray, request: pytest.FixtureRequest) -> McBytePlusPlus
 
 
 @pytest.mark.parametrize("frame_step", [0.5, 1.0, 2.0])
-def test_stationary_prediction_and_camera_translation_preserve_identity(tracklet, bbox, frame_step) -> None:
-    """Zero object velocity keeps the box fixed; camera translation shifts both corners equally."""
+def test_stationary_prediction_and_update_preserve_identity(tracklet, bbox, frame_step) -> None:
+    """Zero object velocity and a matching detection preserve the box and assigned IDs."""
     assert (tracklet.tracker_id, tracklet.public_id) == (-1, -1)
     tracklet.tracker_id, tracklet.public_id = 7, 900
     prediction = tracklet.predict(
         PredictTiming(frame_step=frame_step, elapsed_seconds=frame_step / 25, frame_rate=25.0)
     )
     np.testing.assert_allclose(prediction, bbox)
-    covariance = tracklet.state_estimator.kf.state_covariance.copy()
-    tracklet.apply_cmc(np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]]))
-    translated = bbox + np.array([5.0, -3.0, 5.0, -3.0])
-    np.testing.assert_allclose(tracklet.get_state_bbox(), translated)
-    np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, covariance)
-    tracklet.apply_cmc(None)
-    np.testing.assert_allclose(tracklet.get_state_bbox(), translated)
-    np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, covariance)
     assert tracklet.time_since_update == 1
-    tracklet.update(translated)
-    np.testing.assert_allclose(tracklet.get_state_bbox(), translated)
+    tracklet.update(bbox)
+    np.testing.assert_allclose(tracklet.get_state_bbox(), bbox)
     assert np.isfinite(tracklet.state_estimator.kf.state_covariance).all()
     assert (tracklet.tracker_id, tracklet.public_id) == (7, 900)
 
