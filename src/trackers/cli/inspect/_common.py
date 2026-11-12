@@ -33,6 +33,7 @@ import cv2
 import numpy as np
 
 from trackers.core.masks.base import MaskOutput, TrackletSnapshot
+from trackers.io._image import _read_image, _write_image
 
 if TYPE_CHECKING:
     import torch
@@ -257,7 +258,7 @@ def load_rgb_image(image_path: Path) -> np.ndarray:
         ...
         FileNotFoundError: Could not read image: missing.jpg
     """
-    image_bgr = cv2.imread(str(image_path))
+    image_bgr = _read_image(image_path)
     if image_bgr is None:
         raise FileNotFoundError(f"Could not read image: {image_path}")
     return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
@@ -287,7 +288,7 @@ def save_rgb_image(
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-    if not cv2.imwrite(str(output_path), image_bgr):
+    if not _write_image(output_path, image_bgr):
         raise RuntimeError(f"Could not save visualization: {output_path}")
 
 
