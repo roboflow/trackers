@@ -10,6 +10,7 @@ import logging
 import os
 import warnings
 from collections.abc import Iterable
+from contextlib import suppress
 from pathlib import Path
 from typing import Literal
 
@@ -270,7 +271,7 @@ def evaluate_mot_sequences(
             (flat layout).
         tracker_dir: Directory containing tracker prediction files (`{seq}.txt`).
         seqmap: Optional sequence map. If provided, only those sequences are
-            evaluated.
+            evaluated, and their ground-truth files guide layout detection.
         metrics: Metric families to compute. Supported values are
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity`. Defaults to `0.5`.
@@ -315,15 +316,15 @@ def evaluate_mot_sequences(
     if not tracker_dir.exists():
         raise FileNotFoundError(f"Tracker directory not found: {tracker_dir}")
 
-    # Detect directory format
-    data_format = _detect_format(gt_dir)
-    logger.info("Detected format: %s", data_format)
-
-    # Get sequence list
-    if seqmap is not None:
-        sequences = _parse_seqmap(seqmap)
-    else:
+    seqmap_stat = None
+    if seqmap is None:
+        data_format = _detect_format(gt_dir)
         sequences = _discover_sequences(gt_dir, data_format)
+    else:
+        sequences = _parse_seqmap(seqmap)
+        seqmap_stat = Path(seqmap).stat()
+        data_format = _detect_format(gt_dir, sequences=sequences, seqmap_stat=seqmap_stat)
+    logger.info("Detected format: %s", data_format)
 
     if not sequences:
         raise ValueError(f"No sequences found in {gt_dir}")
@@ -336,14 +337,10 @@ def evaluate_mot_sequences(
     sequence_results: dict[str, SequenceResult] = {}
 
     for seq_name in sequences:
-        gt_path, tracker_path = _get_paths(
-            gt_dir=gt_dir,
-            tracker_dir=tracker_dir,
-            seq_name=seq_name,
-            data_format=data_format,
-        )
+        gt_path = _get_ground_truth_path(gt_dir, seq_name, data_format)
+        tracker_path = tracker_dir / f"{seq_name}.txt"
 
-        if not gt_path.exists():
+        if not gt_path.exists() or _is_seqmap_file(gt_path, seqmap_stat):
             raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
@@ -414,30 +411,60 @@ def _warn_if_mot20_sequences_use_mot17_config(sequence_names: Iterable[str], cla
     )
 
 
-def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
+def _is_seqmap_file(path: Path, seqmap_stat: os.stat_result | None) -> bool:
+    """Check whether a candidate names the explicit sequence map.
+
+    Args:
+        path: Candidate path, which may be a link to the sequence map.
+        seqmap_stat: File identity of the explicit sequence map, if provided.
+
+    Returns:
+        Whether the path refers to the sequence map.
+    """
+    if seqmap_stat is not None:
+        with suppress(OSError):
+            return os.path.samestat(path.stat(), seqmap_stat)
+    return False
+
+
+def _detect_format(
+    gt_dir: Path, *, sequences: list[str] | None = None, seqmap_stat: os.stat_result | None = None
+) -> Literal["flat", "mot"]:
     """Auto-detect directory format.
 
     Args:
         gt_dir: Ground truth directory (direct parent of sequences).
+        sequences: Sequence names selected by an explicit map, when provided.
+        seqmap_stat: File identity of the sequence map to exclude from detection.
 
     Returns:
-        "flat" if .txt files exist in gt_dir, "mot" if sequence
-        subdirectories with gt/gt.txt exist.
+        The usual directory layout, unless only the other layout contains
+        every selected sequence.
     """
     # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
     # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
-    txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
-    if txt_files:
-        return "flat"
+    flat_files = (path for path in gt_dir.glob("*.txt") if not path.name.startswith("."))
+    data_format: Literal["flat", "mot"] = "flat"
+    # Hidden MOT directories still count because a seqmap can select them.
+    if not any(not _is_seqmap_file(path, seqmap_stat) for path in flat_files) and any(
+        not _is_seqmap_file(path, seqmap_stat) for path in gt_dir.glob("*/gt/gt.txt")
+    ):
+        data_format = "mot"
 
-    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir). Hidden sequence
-    # directories still count here: a `seqmap` may list them explicitly.
-    mot_files = list(gt_dir.glob("*/gt/gt.txt"))
-    if mot_files:
-        return "mot"
+    if not sequences:
+        return data_format
 
-    # Default to flat
-    return "flat"
+    preferred_files = (_get_ground_truth_path(gt_dir, name, data_format) for name in sequences)
+    with suppress(OSError):
+        if all(path.is_file() and not _is_seqmap_file(path, seqmap_stat) for path in preferred_files):
+            return data_format
+
+    alternate: Literal["flat", "mot"] = "mot" if data_format == "flat" else "flat"
+    alternate_files = (_get_ground_truth_path(gt_dir, name, alternate) for name in sequences)
+    with suppress(OSError):
+        if all(path.is_file() and not _is_seqmap_file(path, seqmap_stat) for path in alternate_files):
+            return alternate
+    return data_format
 
 
 def _discover_sequences(
@@ -465,33 +492,20 @@ def _discover_sequences(
         )
 
 
-def _get_paths(
-    gt_dir: Path,
-    tracker_dir: Path,
-    seq_name: str,
-    data_format: Literal["flat", "mot"],
-) -> tuple[Path, Path]:
-    """Get GT and tracker file paths for a sequence.
+def _get_ground_truth_path(gt_dir: Path, seq_name: str, data_format: Literal["flat", "mot"]) -> Path:
+    """Get the ground-truth file path for a sequence.
 
     Args:
         gt_dir: Ground truth directory (direct parent of sequences).
-        tracker_dir: Tracker directory (contains {seq}.txt files).
         seq_name: Sequence name.
         data_format: Directory format.
 
     Returns:
-        Tuple of (gt_path, tracker_path).
+        Ground-truth file path for the given layout.
     """
     if data_format == "flat":
-        gt_path = gt_dir / f"{seq_name}.txt"
-    else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        gt_path = gt_dir / seq_name / "gt" / "gt.txt"
-
-    # Tracker files are always flat: tracker_dir/{seq}.txt
-    tracker_path = tracker_dir / f"{seq_name}.txt"
-
-    return gt_path, tracker_path
+        return gt_dir / f"{seq_name}.txt"
+    return gt_dir / seq_name / "gt" / "gt.txt"
 
 
 def _parse_seqmap(seqmap_path: str | Path) -> list[str]:
