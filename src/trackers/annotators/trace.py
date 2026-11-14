@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from itertools import pairwise
 
 import cv2
 import numpy as np
@@ -177,25 +178,14 @@ class MotionAwareTraceAnnotator:
             world_points = np.array(trajectory, dtype=np.float32)
             frame_points = coord_transform.abs_to_rel(world_points)
 
-            # Filter out points outside the frame bounds
             height, width = scene.shape[:2]
-            valid_mask = (
-                (frame_points[:, 0] >= 0)
-                & (frame_points[:, 0] < width)
-                & (frame_points[:, 1] >= 0)
-                & (frame_points[:, 1] < height)
-                & np.isfinite(frame_points[:, 0])
-                & np.isfinite(frame_points[:, 1])
-            )
-
-            if np.sum(valid_mask) < 2:
+            paths = _trace_paths(frame_points, width, height, self.thickness)
+            if not paths:
                 continue
-
-            points: np.ndarray = frame_points[valid_mask].astype(np.int32)
 
             scene = cv2.polylines(
                 scene,
-                [points],
+                paths,
                 isClosed=False,
                 color=color.as_bgr(),
                 thickness=self.thickness,
@@ -217,3 +207,74 @@ class MotionAwareTraceAnnotator:
             tracker_id: The tracker ID to clear.
         """
         self._trajectories.pop(tracker_id, None)
+
+
+def _trace_paths(points: np.ndarray, width: int, height: int, thickness: int) -> list[np.ndarray]:
+    """Build paths from consecutive projected points.
+
+    Args:
+        points: Projected trajectory points in frame coordinates.
+        width: Frame width in pixels.
+        height: Frame height in pixels.
+        thickness: Stroke width in pixels.
+
+    Returns:
+        Paths with integer coordinates suitable for OpenCV drawing.
+    """
+    if width == 0 or height == 0:
+        return []
+    limits = np.iinfo(np.int32)
+    # These bounds describe values whose truncation fits int32, even when
+    # the projection is float16. Non-finite points fail the comparisons.
+    drawable = ((points > np.float64(limits.min - 1)) & (points < np.float64(limits.max + 1))).all(axis=1)
+    indices = np.flatnonzero(drawable)
+    breaks = np.flatnonzero(np.diff(indices) > 1) + 1
+    paths: list[np.ndarray] = []
+    # Keep ordinary paths intact for exact pixel rounding. For far projections,
+    # bound the work on OpenCV versions that do not preclip thick strokes.
+    extent = np.float64(width + height + max(thickness, 1))
+    for run in np.split(indices, breaks):
+        if len(run) < 2:
+            continue
+        path = points[run]
+        if thickness <= 1 or ((path >= -extent) & (path <= extent)).all():
+            paths.append(path.astype(np.int32))
+            continue
+        pixels = path.astype(np.int32).tolist()
+        for start, end in pairwise(pixels):
+            if all(-extent <= coordinate <= extent for point in (start, end) for coordinate in point):
+                paths.append(np.array([start, end], dtype=np.int32))
+                continue
+            clipped = _clip_segment(start, end, -thickness, (width + thickness - 1, height + thickness - 1))
+            if clipped is not None:
+                paths.append(clipped)
+    return paths
+
+
+def _clip_segment(start: list[int], end: list[int], lower: int, upper: tuple[int, int]) -> np.ndarray | None:
+    """Clip a segment to a rectangle using its interval along each axis.
+
+    Args:
+        start: First endpoint in frame coordinates.
+        end: Second endpoint in frame coordinates.
+        lower: Inclusive lower bound for both axes.
+        upper: Inclusive upper bounds for x and y.
+
+    Returns:
+        The two clipped endpoints, or None if the segment misses the rectangle.
+    """
+    entry, exit_ = 0.0, 1.0
+    for origin, target, high in zip(start, end, upper):
+        delta = target - origin
+        if delta == 0:
+            if not lower <= origin <= high:
+                return None
+            continue
+        near, far = sorted(((lower - origin) / delta, (high - origin) / delta))
+        entry, exit_ = max(entry, near), min(exit_, far)
+        if entry > exit_:
+            return None
+    return np.array(
+        [[round(origin + t * (target - origin)) for origin, target in zip(start, end)] for t in (entry, exit_)],
+        dtype=np.int32,
+    )
