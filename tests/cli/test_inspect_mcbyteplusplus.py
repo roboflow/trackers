@@ -22,6 +22,7 @@ import supervision as sv
 from jsonargparse import ActionConfigFile
 
 from trackers import McBytePlusPlusMaskConfig
+from trackers.cli._mcbyteplusplus import CMCOptions
 from trackers.cli._parser import _CLIParser
 from trackers.cli.inspect.mcbyteplusplus import SequenceOptions, mcbyteplusplus_inspection
 from trackers.core.masks.base import MaskOutput
@@ -91,6 +92,7 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
     sequence = SequenceOptions(image_dir, detections, 2, 3, confidence_override=1.0)
     assert mcbyteplusplus_inspection(
         sequence,
+        cmc=CMCOptions(method="sift", downscale=2, minimum_matches=14, minimum_scale=0.5, maximum_scale=2.0),
         edgetam=McBytePlusPlusMaskConfig(device="cpu", revision="requested-commit"),
         output_dir=tmp_path / "output",
     ) == int(fail_on_second)
@@ -128,8 +130,12 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
     result_rows = [line.split(",") for line in (run_dir / "results.txt").read_text().splitlines()]
     expected_frame_ids = [(number, 7) for number in expected_frames]
     assert [(int(row[0]), int(row[1])) for row in result_rows] == expected_frame_ids
-    assert calls[0]["cmc_method"] == "orb"
-    assert calls[0]["cmc_downscale"] == 4
+    assert calls[0]["cmc_method"] == "sift"
+    assert calls[0]["cmc_downscale"] == 2
+    assert calls[0]["enable_conditional_cmc"] is True
+    assert calls[0]["cmc_minimum_matches"] == 14
+    assert calls[0]["cmc_minimum_scale"] == 0.5
+    assert calls[0]["cmc_maximum_scale"] == 2.0
     assert calls[0]["enable_mask_trust_filter"] is True
     assert FakeTracker.reset_called
     parser = _CLIParser(exit_on_error=False)
@@ -141,9 +147,22 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
     assert restored.edgetam.device == "cpu"
     assert restored.tracker.enable_mask_trust_filter is True
     overridden = parser.instantiate_classes(
-        parser.parse_args(["--config", str(run_dir / "config.json"), "--tracker.enable_mask_trust_filter", "false"])
+        parser.parse_args(
+            [
+                "--config",
+                str(run_dir / "config.json"),
+                "--tracker.enable_mask_trust_filter",
+                "false",
+                "--cmc.conditional",
+                "false",
+                "--cmc.minimum_scale",
+                "0.5",
+            ]
+        )
     )
     assert overridden.tracker.enable_mask_trust_filter is False
+    assert overridden.cmc.conditional is False
+    assert overridden.cmc.minimum_scale == 0.5
 
 
 def test_invalid_frame_range_rejected_before_model_load(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:

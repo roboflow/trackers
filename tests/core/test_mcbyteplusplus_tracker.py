@@ -16,6 +16,8 @@ from trackers.core.masks.base import MaskOutput, TrackletSnapshot
 from trackers.core.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
 from trackers.core.masks.manager import MaskManager
 from trackers.core.mcbyteplusplus.tracklet import McBytePlusPlusTracklet
+from trackers.utils.cmc import CMC
+from trackers.utils.conditional_cmc import ConditionalCMC
 from trackers.utils.iou import DIoU, GIoU, IoU
 
 
@@ -385,16 +387,29 @@ def test_oom_streak_survives_deferred_creation_and_reset_restores_manager(caplog
     assert tracker.last_mask_output.tracklet_mask_dict == {0: 0}
 
 
-def test_tracker_cmc_helper_preserves_internal_and_public_ids() -> None:
-    tracker = McBytePlusPlusTracker(enable_cmc=False)
-    tracker.update(detection())
+@pytest.mark.parametrize("enable_conditional_cmc", [False, True], ids=["regular", "conditional"])
+def test_cmc_update_preserves_internal_and_public_ids(
+    monkeypatch: pytest.MonkeyPatch, enable_conditional_cmc: bool
+) -> None:
+    """Applying camera motion during update must preserve both kinds of track ID."""
+    tracker = McBytePlusPlusTracker(enable_conditional_cmc=enable_conditional_cmc)
+    frame = np.zeros((40, 60, 3), dtype=np.uint8)
+    tracker.update(detection(box=(10.0, 10.0, 30.0, 30.0)), frame)
     tracker.tracks[0].public_id = 900
     before = tracker.tracked_objects.xyxy.copy()
-    tracker.apply_cmc_batch(np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]]))
-    tracker.apply_cmc_batch(None)
-    np.testing.assert_allclose(tracker.tracked_objects.xyxy, before + np.array([5.0, -3.0, 5.0, -3.0]))
+    affines = iter([np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]]), None])
+    monkeypatch.setattr(tracker.cmc, "estimate", lambda *args: next(affines))
+    # Omit detections so a Kalman correction cannot conceal a missing CMC transform.
+    tracker.update(sv.Detections.empty(), frame)
+    expected = before + np.array([5.0, -3.0, 5.0, -3.0])
+    np.testing.assert_allclose(tracker.tracked_objects.xyxy, expected)
     assert tracker.tracks[0].tracker_id == 0
     assert tracker.tracked_objects.tracker_id.tolist() == [900]
+    # A missing transform is a no-op; re-association must return the existing public ID.
+    result = tracker.update(detection(box=expected[0]), frame)
+    np.testing.assert_allclose(tracker.tracked_objects.xyxy, expected)
+    assert tracker.tracks[0].tracker_id == 0
+    assert result.tracker_id.tolist() == [900]
 
 
 @pytest.mark.parametrize("enable_mask_manager", [False, True])
@@ -509,6 +524,61 @@ def test_cmc_default_downscale_and_explicit_override() -> None:
     custom = McBytePlusPlusTracker(cmc_downscale=2)
     assert default.cmc is not None and default.cmc.downscale == 4
     assert custom.cmc is not None and custom.cmc.downscale == 2
+
+
+@pytest.mark.parametrize("method", ["orb", "sift", "sparseOptFlow", "ecc"])
+def test_conditional_cmc_selection_and_custom_settings(method) -> None:
+    """Select the requested CMC backend and forward custom conditional settings for every method."""
+    tracker = McBytePlusPlusTracker(
+        cmc_method=method, cmc_minimum_matches=15, cmc_minimum_scale=0.5, cmc_maximum_scale=2.0
+    )
+    assert isinstance(tracker.cmc, ConditionalCMC)
+    assert tracker.cmc.cfg.method == method
+    assert tracker.cmc.cfg.minimum_matches == 15
+    assert tracker.cmc.cfg.minimum_scale == 0.5
+    assert tracker.cmc.cfg.maximum_scale == 2.0
+    assert type(McBytePlusPlusTracker(cmc_method=method, enable_conditional_cmc=False).cmc) is CMC
+    assert McBytePlusPlusTracker(cmc_method=method, enable_cmc=False).cmc is None
+
+
+@pytest.mark.parametrize(
+    "scale,expected_box",
+    [
+        pytest.param(2.0, [40.0, 60.0, 120.0, 260.0], id="accepted"),
+        pytest.param(4.0, [20.0, 30.0, 60.0, 130.0], id="rejected"),
+    ],
+)
+def test_update_uses_conditional_state_warp_before_association(
+    monkeypatch: pytest.MonkeyPatch, scale: float, expected_box: list[float]
+) -> None:
+    """Association uses the transformed prediction only when conditional CMC accepts the matrix."""
+    tracker = McBytePlusPlusTracker()
+    frame = np.zeros((200, 300, 3), dtype=np.uint8)
+    tracker.update(detection((20.0, 30.0, 60.0, 130.0)), frame)
+    # A 2x scale is accepted; 4x exceeds the default maximum of 3 and must preserve the prediction.
+    monkeypatch.setattr(tracker.cmc, "estimate", lambda *args: np.eye(2, 3) * scale)
+    seen = []
+    original = tracker._get_iou_matrix
+
+    def capture(tracks, boxes, predicted):
+        # Inspect the box used for association before a detector correction could hide an error.
+        seen.extend(predicted[id(track)].copy() for track in tracks)
+        return original(tracks, boxes, predicted)
+
+    monkeypatch.setattr(tracker, "_get_iou_matrix", capture)
+    tracker.update(detection(expected_box), frame)
+    np.testing.assert_allclose(seen[0], expected_box)
+
+
+def test_tracker_reset_clears_conditional_reference() -> None:
+    """Reset must clear a reference previously initialized through tracker.update()."""
+    tracker = McBytePlusPlusTracker()
+    frame = np.zeros((40, 60, 3), dtype=np.uint8)
+    tracker.update(detection(), frame)
+    assert isinstance(tracker.cmc, ConditionalCMC)
+    assert tracker.cmc._initialized and tracker.cmc._frame_shape == frame.shape[:2]
+    tracker.reset()
+    assert tracker.cmc._frame_shape is None and not tracker.cmc._initialized
 
 
 def test_real_sparse_optical_flow_cmc_keeps_a_stationary_track() -> None:

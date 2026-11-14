@@ -34,6 +34,7 @@ from trackers.core.mcbyteplusplus.mask_association import (
 from trackers.core.mcbyteplusplus.tracklet import McBytePlusPlusTracklet
 from trackers.core.mcbyteplusplus.utils import _get_alive_tracklets
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
+from trackers.utils.conditional_cmc import ConditionalCMC, ConditionalCMCConfig
 from trackers.utils.detections import default_confidences
 from trackers.utils.iou import BaseIoU, IoU
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
@@ -216,8 +217,12 @@ class McBytePlusPlusTracker(BaseTracker):
     separation prepares for planned long-term tracking with re-identification
     (re-ID): multiple tracklets could later share one public identity while each
     keeps its own mask ownership. Both IDs currently have the same assigned value;
-    long-term re-ID and selective CMC are not implemented yet. See ``update`` for
-    timing, return-value and failure rules.
+    long-term re-ID is not implemented yet. Conditional CMC estimates motion on
+    each accepted image and applies only validated corrections. Its default
+    centre/width/height state transform retains the research calculations;
+    non-finite candidates or non-positive dimensions leave that track's
+    prediction and covariance unchanged. Other state layouts retain their
+    existing transformation rules. See ``update`` for timing and failure rules.
 
     Args:
         lost_track_buffer: Missed-frame budget in 30 FPS units, scaled by frame_rate.
@@ -232,9 +237,19 @@ class McBytePlusPlusTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: Similarity threshold for tentative tracks.
         high_conf_det_threshold: Inclusive high-confidence cutoff, strictly above 0.1.
             Scores at or below 0.1 are discarded; intermediate scores enter stage two.
-        enable_cmc: Enable shared camera motion compensation on BGR images.
+        enable_cmc: Enable camera motion compensation on BGR images.
         cmc_method: Camera motion estimator, defaulting to the research ORB preset.
         cmc_downscale: Downscale factor for camera motion estimation.
+        enable_conditional_cmc: Use conditional CMC for all four estimation methods.
+            Defaults to True. False selects the original shared CMC implementation
+            for comparisons. Has no effect when enable_cmc is False.
+        cmc_minimum_matches: Conditional ORB/SIFT candidate matches required before
+            statistical filtering; at least five must remain afterwards. Defaults
+            to the research ORB value of 12. Does not affect optical flow or ECC.
+        cmc_minimum_scale: Conditional CMC's minimum affine column norm, default 0.3.
+        cmc_maximum_scale: Conditional CMC's maximum affine column norm, default 3.0.
+            Bounds must be finite, positive and include one. Conditional settings
+            are ignored when conditional CMC or CMC itself is disabled.
         instant_first_frame_activation: Immediately confirm tracks created on the first update.
         state_estimator_class: Motion-state representation used by new tracklets.
         iou: Similarity implementation; defaults to standard IoU.
@@ -302,6 +317,11 @@ class McBytePlusPlusTracker(BaseTracker):
         mask_refresh_coverage_threshold: float = 0.5,
         mask_refresh_interval: int = 1,
         enable_mask_trust_filter: bool = True,
+        *,
+        enable_conditional_cmc: bool = True,
+        cmc_minimum_matches: int = 12,
+        cmc_minimum_scale: float = 0.3,
+        cmc_maximum_scale: float = 3.0,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(lost_track_buffer, frame_rate)
         self.maximum_time_without_update = lost_track_buffer / 30.0
@@ -342,7 +362,20 @@ class McBytePlusPlusTracker(BaseTracker):
         self.minimum_mask_fill_ratio = minimum_mask_fill_ratio
         self.enable_isolated_mask_matching = enable_isolated_mask_matching
         self.enable_cmc = enable_cmc
-        self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale)) if enable_cmc else None
+        self.cmc: CMC | ConditionalCMC | None = None
+        if enable_cmc:
+            if enable_conditional_cmc:
+                self.cmc = ConditionalCMC(
+                    ConditionalCMCConfig(
+                        method=cmc_method,
+                        downscale=cmc_downscale,
+                        minimum_matches=cmc_minimum_matches,
+                        minimum_scale=cmc_minimum_scale,
+                        maximum_scale=cmc_maximum_scale,
+                    )
+                )
+            else:
+                self.cmc = CMC(CMCConfig(method=cmc_method, downscale=cmc_downscale))
         self.mask_manager = mask_manager
         if mask_manager is None and enable_mask_manager:
             self.mask_manager = _build_default_mask_manager(edgetam_config or McBytePlusPlusMaskConfig())
@@ -413,7 +446,9 @@ class McBytePlusPlusTracker(BaseTracker):
            image. The EdgeTAM backend performs session rollover here if needed.
            Empty masks are excluded before association when trust filtering is on.
         3. Split detections by confidence and apply CMC to predicted track states
-           using the current BGR image. Match high-confidence detections to
+           using the current BGR image. Conditional CMC rejects unsafe matrices
+           and keeps a track's prediction/covariance when its candidate is invalid.
+           Match high-confidence detections to
            confirmed/lost tracks, low-confidence detections to remaining recently
            tracked objects, then remaining high-confidence detections to tentative
            tracks. Stages one and three fuse detection scores with IoU; stage two
@@ -562,7 +597,7 @@ class McBytePlusPlusTracker(BaseTracker):
         if self.enable_cmc and self.cmc is not None and current_frame is not None and not timing.skip_predict:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(current_frame, mask_boxes)
-            CMC.apply_batch(H, self.tracks)
+            self.cmc.apply_batch(H, self.tracks)
 
         # Cache each tracklet's predicted state bbox once per update. Track state
         # is unchanged across the three association stages: a track matched in an
@@ -1279,20 +1314,3 @@ class McBytePlusPlusTracker(BaseTracker):
             self.cmc.reset()
         self._clear_mask_state()
         self._consecutive_mask_failures = 0
-
-    def apply_cmc_batch(self, H: np.ndarray | None) -> None:
-        """Apply camera motion compensation to all active tracks.
-
-        Convenience wrapper around :meth:`CMC.apply_batch` for callers that hold
-        a tracker instance and an affine transform. ``update()`` applies CMC
-        directly and does not rely on this method.
-
-        Args:
-            H: 2x3 affine transform matrix returned by CMC.estimate().
-                If None, this method is a no-op.
-
-        Examples:
-            >>> tracker = McBytePlusPlusTracker()
-            >>> tracker.apply_cmc_batch(None)  # no-op
-        """
-        CMC.apply_batch(H, self.tracks)

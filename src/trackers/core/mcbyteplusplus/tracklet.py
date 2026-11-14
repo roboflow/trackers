@@ -8,7 +8,6 @@
 
 import numpy as np
 
-from trackers.utils.cmc import CMC
 from trackers.utils.predict_timing import FIXED_RATE_TIMING, PredictTiming
 from trackers.utils.scale_aware_tracklet import ScaleAwareNoiseTracklet
 from trackers.utils.state_representations import BaseStateEstimator, XCYCWHStateEstimator
@@ -31,7 +30,6 @@ class McBytePlusPlusTracklet(ScaleAwareNoiseTracklet):
       receive ``update(None)``; a matched ``update(bbox)`` resets those clocks.
     - ``number_of_successful_updates`` starts at one for the initial box and
       counts all matched updates; a missed detection does not reset it.
-    - ``apply_cmc`` transforms the motion state and covariance in place.
 
     ``tracker_id`` and ``public_id`` both start at ``-1``. The tracker assigns
     them when confirming a track. The internal ``tracker_id`` identifies mask
@@ -114,25 +112,3 @@ class McBytePlusPlusTracklet(ScaleAwareNoiseTracklet):
             most recent operation; it is not necessarily the last detection box.
         """
         return self.state_estimator.state_to_bbox()
-
-    def apply_cmc(self, H: np.ndarray | None) -> None:
-        """Apply a 2x3 affine camera-motion transform **in place**.
-
-        Transforms the Kalman state and covariance without changing identities
-        or lifecycle counters. Delegates to :meth:`CMC.apply_batch` with ``[self]`` as the
-        tracklet list. See that method for full documentation of the
-        transform convention, state-representation handling, and covariance
-        update rules.
-
-        Args:
-            H: 2x3 affine transform matrix. If ``None``, this is a no-op.
-
-        Examples:
-            >>> import numpy as np
-            >>> bbox = np.array([10.0, 20.0, 50.0, 80.0])
-            >>> tracklet = McBytePlusPlusTracklet(bbox)
-            >>> H = np.array([[1.0, 0.0, 5.0], [0.0, 1.0, -3.0]], dtype=np.float32)
-            >>> tracklet.apply_cmc(H)
-            >>> tracklet.apply_cmc(None)  # no-op
-        """
-        CMC.apply_batch(H, [self])

@@ -4,11 +4,11 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""Run McByte++ on SoccerNet oracle detections and save outputs for later scoring.
+"""Run McByte++ on saved detections and save outputs for later scoring.
 
-The input root is the original unzipped ``tracking/test`` directory. Each ``SNMOT-*`` sequence supplies ``seqinfo.ini``,
-``img1`` and ``det/det.txt``. Ground-truth identities are never read. HOTA, IDF1 and MOTA are evaluated separately from
-the completed MOT result files.
+Supports SoccerNet oracle detections and six-column YOLOX detections for MOT17, DanceTrack and SportsMOT. Each sequence
+supplies ``seqinfo.ini`` and ``img1``. Ground-truth files are never read. Accuracy is evaluated separately from the
+completed MOT result files.
 """
 
 from __future__ import annotations
@@ -19,6 +19,8 @@ import json
 import logging
 import math
 import platform
+import re
+import shutil
 import sys
 import warnings
 from dataclasses import asdict, dataclass
@@ -26,7 +28,7 @@ from datetime import datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from time import perf_counter
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -34,7 +36,7 @@ from jsonargparse import ArgumentParser
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from trackers.cli._detections import build_detections, find_frame_path, read_detection_file
+from trackers.cli._detections import DetectionFileFormat, build_detections, find_frame_path, read_detection_file
 from trackers.cli._mcbyteplusplus import CMCOptions, TrackerOptions, _HubAuthNoticeFilter, visualize_mcbyteplusplus
 from trackers.cli._parser import register_argument_adder
 from trackers.cli._tracking import append_mot_results
@@ -43,26 +45,55 @@ from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig, McByt
 from trackers.io.video import _VideoOutput
 
 DEFAULT_OUTPUT_ROOT = Path("outputs/mcbyteplusplus_benchmarks")
+BenchmarkDataset = Literal["soccernet", "mot17", "dancetrack", "sportsmot"]
 
 
 @dataclass(frozen=True)
 class _Sequence:
-    """One SoccerNet sequence, with length and playback rate from its metadata."""
+    """One unique video, its detection file and its declared length/playback rate."""
 
+    name: str
     path: Path
+    detection_path: Path
     frame_count: int
     frame_rate: float
 
 
-def _find_sequences(dataset_root: Path, names: list[str] | None) -> tuple[list[_Sequence], list[str]]:
+def _find_sequences(
+    dataset_root: Path,
+    names: list[str] | None,
+    dataset: BenchmarkDataset = "soccernet",
+    detection_root: Path | None = None,
+) -> tuple[list[_Sequence], list[str]]:
     """Validate selected sequence metadata before loading EdgeTAM.
 
     Length comes from ``seqinfo.ini``, not the last detection: trailing frames without detections must still advance the
     tracker and appear in the visual outputs. Only paths are inspected here; images reach the tracker one at a time.
     """
-    discovered = sorted(path.name for path in dataset_root.glob("SNMOT-*") if path.is_dir())
+    patterns = {"soccernet": "SNMOT-*", "mot17": "MOT17-*", "dancetrack": "dancetrack*", "sportsmot": "v_*"}
+    if dataset not in patterns:
+        raise ValueError(f"Unsupported dataset: {dataset}.")
+    if dataset != "soccernet" and detection_root is None:
+        raise ValueError(f"{dataset} requires --detection_root with six-column XYXY detection files.")
+    paths: dict[str, Path] = {}
+    for path in sorted(dataset_root.glob(patterns[dataset])):
+        if not path.is_dir():
+            continue
+        name = path.name
+        if dataset == "mot17":
+            match = re.fullmatch(r"(MOT17-\d{2})(?:-(FRCNN|DPM|SDP))?", name)
+            if match is None:
+                continue
+            name = match.group(1)
+            # All detector variants contain the same video. Prefer FRCNN when available.
+            if name in paths and match.group(2) != "FRCNN":
+                continue
+        paths[name] = path
+    discovered = sorted(paths)
     if not discovered:
-        raise ValueError(f"No SNMOT-* sequences found in {dataset_root}; point --dataset_root at tracking/test.")
+        raise ValueError(
+            f"No {dataset} sequences found in {dataset_root}; point --dataset_root at the split directory."
+        )
     selected = discovered if names is None else names
     if not selected or len(set(selected)) != len(selected):
         raise ValueError("sequences must be a non-empty list without duplicates, or null for all sequences.")
@@ -71,7 +102,7 @@ def _find_sequences(dataset_root: Path, names: list[str] | None) -> tuple[list[_
         raise ValueError(f"Sequences not found in {dataset_root}: {sorted(unknown)}")
     result = []
     for name in selected:
-        path = dataset_root / name
+        path = paths[name]
         metadata = configparser.ConfigParser()
         with (path / "seqinfo.ini").open(encoding="utf-8") as handle:
             metadata.read_file(handle)
@@ -79,9 +110,10 @@ def _find_sequences(dataset_root: Path, names: list[str] | None) -> tuple[list[_
         frame_rate = metadata.getfloat("Sequence", "frameRate")
         if frame_count <= 0 or not math.isfinite(frame_rate) or frame_rate <= 0:
             raise ValueError(f"{name}: seqLength and frameRate must be finite and positive.")
-        if not (path / "det/det.txt").is_file() or not (path / "img1").is_dir():
-            raise ValueError(f"{name}: expected det/det.txt and img1 in {path}.")
-        result.append(_Sequence(path, frame_count, frame_rate))
+        detection_path = detection_root / f"{name}.txt" if detection_root is not None else path / "det/det.txt"
+        if not detection_path.is_file() or not (path / "img1").is_dir():
+            raise ValueError(f"{name}: expected {detection_path} and {path / 'img1'}.")
+        result.append(_Sequence(name, path, detection_path, frame_count, frame_rate))
     return result, discovered
 
 
@@ -144,9 +176,9 @@ def _run_sequence(
     """
     started = perf_counter()
     tracker = None
-    video_path = run_dir / "videos" / f"{sequence.path.name}.partial.mp4"
-    frame_dir = run_dir / "frames" / f"{sequence.path.name}.partial"
-    partial_results = run_dir / "results" / f"{sequence.path.name}.txt.partial"
+    video_path = run_dir / "videos" / f"{sequence.name}.partial.mp4"
+    frame_dir = run_dir / "frames" / f"{sequence.name}.partial"
+    partial_results = run_dir / "results" / f"{sequence.name}.txt.partial"
     frame_count = min(sequence.frame_count, options["max_frames"] or sequence.frame_count)
     report.update(
         status="failed",
@@ -156,24 +188,39 @@ def _run_sequence(
         tracking_seconds=0.0,
         frame_rate=sequence.frame_rate,
         mask_disabled_frames=0,
+        save_frames=options["save_frames"],
+        save_video=options["save_video"],
     )
-    task = progress.add_task(sequence.path.name, total=frame_count)
+    task = progress.add_task(sequence.name, total=frame_count)
     hub_logger = logging.getLogger("huggingface_hub.utils._http")
     hub_filter = _HubAuthNoticeFilter()
     hub_logger.addFilter(hub_filter)
     with warnings.catch_warnings(record=True) as caught:
         try:
-            detection_path = sequence.path / "det/det.txt"
-            detections = read_detection_file(detection_path, "mot_tlwh", confidence_override=1.0)
+            detection_path = sequence.detection_path
+            detection_format: DetectionFileFormat = "mot_tlwh" if options["dataset"] == "soccernet" else "xyxy"
+            confidence_override = 1.0 if options["dataset"] == "soccernet" else None
+            detections = read_detection_file(detection_path, detection_format, confidence_override=confidence_override)
             if any(number > sequence.frame_count for number in detections):
                 raise ValueError(f"Detections exceed seqLength in {detection_path}.")
             report["detection_sha256"] = hashlib.sha256(detection_path.read_bytes()).hexdigest()
+            report.update(
+                detection_path=str(detection_path.resolve()),
+                detection_format=detection_format,
+                confidence_override=confidence_override,
+                image_dir=str((sequence.path / "img1").resolve()),
+            )
             loading_started = perf_counter()
+            tracker_frame_rate = options["tracker_frame_rate"] or sequence.frame_rate
             tracker = McBytePlusPlusTracker(
-                frame_rate=sequence.frame_rate,
+                frame_rate=tracker_frame_rate,
                 enable_cmc=options["cmc"]["enable"],
                 cmc_method=options["cmc"]["method"],
                 cmc_downscale=options["cmc"]["downscale"],
+                enable_conditional_cmc=options["cmc"]["conditional"],
+                cmc_minimum_matches=options["cmc"]["minimum_matches"],
+                cmc_minimum_scale=options["cmc"]["minimum_scale"],
+                cmc_maximum_scale=options["cmc"]["maximum_scale"],
                 enable_mask_manager=True,
                 edgetam_config=McBytePlusPlusMaskConfig(**options["edgetam"]),
                 **options["tracker"],
@@ -187,6 +234,8 @@ def _run_sequence(
                 model_load_seconds=perf_counter() - loading_started,
                 device=device,
                 resolved_revision=backend.model_revision,
+                tracker_frame_rate=tracker_frame_rate,
+                effective_lost_track_buffer_frames=tracker.maximum_frames_without_update,
             )
             if device.startswith("cuda"):
                 import torch
@@ -243,10 +292,17 @@ def _run_sequence(
             ] + [{"category": "HuggingFaceHubWarning", "message": message} for message in hub_filter.messages]
             progress.remove_task(task)
     if options["save_video"]:
-        video_path.replace(video_path.with_name(f"{sequence.path.name}.mp4"))
+        video_path.replace(video_path.with_name(f"{sequence.name}.mp4"))
     if options["save_frames"]:
-        frame_dir.replace(frame_dir.with_name(sequence.path.name))
-    partial_results.replace(partial_results.with_suffix(""))
+        frame_dir.replace(frame_dir.with_name(sequence.name))
+    completed_results = partial_results.with_suffix("")
+    partial_results.replace(completed_results)
+    if options["dataset"] == "mot17":
+        # The benchmark expects all three detector suffixes for each unique test video.
+        submission = run_dir / "submission"
+        submission.mkdir(exist_ok=True)
+        for detector in ("DPM", "FRCNN", "SDP"):
+            shutil.copyfile(completed_results, submission / f"{sequence.name}-{detector}.txt")
     report.update(status="completed", end_to_end_seconds=perf_counter() - started)
 
 
@@ -276,14 +332,21 @@ def benchmark_command(
     save_video: bool = False,
     save_frames: bool = True,
     max_frames: int | None = None,
+    dataset: BenchmarkDataset = "soccernet",
+    detection_root: Path | None = None,
+    visual_sequences: list[str] | None = None,
+    tracker_frame_rate: float | None = None,
 ) -> int:
-    """Benchmark McByte++ on SoccerNet with oracle boxes and configurable masks.
+    """Benchmark McByte++ on saved boxes with configurable masks and visual outputs.
 
     Runs every discovered sequence unless ``sequences`` selects a subset.
     Always enables EdgeTAM; CMC defaults to ORB with downscale four. Detection
-    confidences are set to 1.0 and input identities are ignored. No ground-truth
-    files are read. Sequence length and video FPS come from seqinfo.ini (25 FPS
-    for SoccerNet). Each sequence gets a fresh tracker, with reset on exit.
+    confidences are set to 1.0 for SoccerNet oracle detections; MOT17, DanceTrack
+    and SportsMOT retain their supplied YOLOX confidences. Input identities are
+    ignored and no ground-truth files are read. Sequence length and video FPS
+    come from seqinfo.ini. The tracker uses that FPS unless ``tracker_frame_rate``
+    overrides its reference rate. Every image is processed once, without timestamps
+    or resampling. Each sequence gets a fresh tracker, with reset on exit.
 
     Saves results/<sequence>.txt, annotated JPEGs in frames/<sequence>/,
     optional videos/<sequence>.mp4, a reusable config.json,
@@ -298,7 +361,7 @@ def benchmark_command(
     tracking FPS; the command continues with the remaining sequences.
 
     Args:
-        dataset_root: Unzipped SoccerNet tracking/test directory.
+        dataset_root: Unzipped split directory containing sequence folders.
         sequences: Sequence names, e.g. [SNMOT-116,SNMOT-117]; None selects all.
         cmc: Camera motion settings; default enabled, ORB, downscale four.
         edgetam: Model, device, revision and session bound (default 200 images).
@@ -309,6 +372,19 @@ def benchmark_command(
         save_frames: Save one annotated JPEG per frame; enabled by default.
         max_frames: Optional per-sequence frame limit for a short trial. None
             processes complete sequences. Limited runs are marked in run.json.
+        dataset: Dataset layout; defaults to soccernet for compatibility.
+        detection_root: Directory of <sequence>.txt files. Required for the
+            three YOLOX datasets, using frame,x1,y1,x2,y2,confidence. SoccerNet
+            defaults to each sequence's det/det.txt in MOT TLWH format.
+        visual_sequences: Restrict enabled frame/video outputs to these names;
+            None selects all and [] selects none. Text results always cover
+            every selected sequence. MOT17 names omit detector suffixes; each
+            unique video runs once, with DPM/FRCNN/SDP copies in submission/.
+        tracker_frame_rate: Optional positive reference FPS passed to the tracker;
+            None uses the sequence FPS. Set 30 together with tracker.lost_track_buffer=30
+            to reproduce the research demo's 30-frame lost-track budget on every
+            dataset. This does not change image selection or video playback FPS.
+            Reports record both rates and the tracker's effective frame budget.
 
     Returns:
         Zero when every requested sequence completes, one on any failure,
@@ -323,7 +399,14 @@ def benchmark_command(
             raise ValueError("max_frames must be positive or null.")
         if cmc.downscale <= 0:
             raise ValueError("cmc.downscale must be positive.")
-        selected, discovered = _find_sequences(dataset_root, sequences)
+        if tracker_frame_rate is not None and (not math.isfinite(tracker_frame_rate) or tracker_frame_rate <= 0):
+            raise ValueError("tracker_frame_rate must be finite and positive or null.")
+        selected, discovered = _find_sequences(dataset_root, sequences, dataset, detection_root)
+        if visual_sequences is not None and (
+            len(set(visual_sequences)) != len(visual_sequences)
+            or set(visual_sequences) - {sequence.name for sequence in selected}
+        ):
+            raise ValueError("visual_sequences must contain unique names from the selected sequences.")
         run_dir = output_root / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         run_dir.mkdir(parents=True, exist_ok=False)
     except (OSError, ValueError, configparser.Error) as error:
@@ -339,15 +422,19 @@ def benchmark_command(
         "save_video": save_video,
         "save_frames": save_frames,
         "max_frames": max_frames,
+        "dataset": dataset,
+        "detection_root": str(detection_root.resolve()) if detection_root is not None else None,
+        "visual_sequences": visual_sequences,
+        "tracker_frame_rate": tracker_frame_rate,
     }
     report: dict[str, Any] = {
         "status": "running",
-        "dataset": "SoccerNet-tracking",
+        "dataset": "SoccerNet-tracking" if dataset == "soccernet" else dataset,
         "config": options,
         "environment": _environment(),
         "requested_revision": edgetam.revision,
         "discovered_sequences": discovered,
-        "selected_sequences": [item.path.name for item in selected],
+        "selected_sequences": [item.name for item in selected],
         "all_discovered_sequences_completed": False,
         "sequences": [],
     }
@@ -369,14 +456,17 @@ def benchmark_command(
         ) as progress:
             total_task = progress.add_task("Sequences", total=len(selected))
             for sequence in selected:
-                sequence_report: dict[str, Any] = {"name": sequence.path.name, "status": "failed"}
+                sequence_report: dict[str, Any] = {"name": sequence.name, "status": "failed"}
                 report["sequences"].append(sequence_report)
+                sequence_options = dict(options)
+                if visual_sequences is not None and sequence.name not in visual_sequences:
+                    sequence_options.update(save_frames=False, save_video=False)
                 try:
-                    _run_sequence(sequence, run_dir, options, sequence_report, progress)
+                    _run_sequence(sequence, run_dir, sequence_options, sequence_report, progress)
                 except Exception as error:
                     sequence_report.update(status="failed", error=str(error))
-                    progress.console.print(f"{sequence.path.name} failed: {error}", markup=False)
-                    logging.getLogger(__name__).exception("Sequence %s failed", sequence.path.name)
+                    progress.console.print(f"{sequence.name} failed: {error}", markup=False)
+                    logging.getLogger(__name__).exception("Sequence %s failed", sequence.name)
                     exit_code = 1
                 except KeyboardInterrupt:
                     sequence_report.update(status="interrupted", error="Keyboard interruption")
@@ -427,12 +517,28 @@ def benchmark_command(
 
 def _add_benchmark_arguments(parser: ArgumentParser) -> list[str]:
     """Use the same nested options and boolean handling as the inspector."""
-    parser.description = "Run McByte++ on SoccerNet oracle detections; save MOT results, annotated frames and FPS."
+    parser.description = "Run McByte++ on saved detections; save MOT results, selected annotated frames and FPS."
     added: list[str] = []
     for option_class, key in ((CMCOptions, "cmc"), (McBytePlusPlusMaskConfig, "edgetam"), (TrackerOptions, "tracker")):
         added.extend(parser.add_class_arguments(option_class, key))
-    parser.add_argument("--dataset_root", type=Path, required=True, help="Unzipped SoccerNet tracking/test directory.")
+    parser.add_argument(
+        "--dataset_root", type=Path, required=True, help="Unzipped split directory with sequence folders."
+    )
+    parser.add_argument("--dataset", type=BenchmarkDataset, default="soccernet", help="Dataset layout.")
+    parser.add_argument("--detection_root", type=Path | None, default=None, help="Required YOLOX detection directory.")
+    parser.add_argument(
+        "--visual_sequences",
+        type=list[str] | None,
+        default=None,
+        help="Visual output names; null for all, [] for none.",
+    )
     parser.add_argument("--sequences", type=list[str] | None, default=None, help="Sequence names; null selects all.")
+    parser.add_argument(
+        "--tracker_frame_rate",
+        type=float | None,
+        default=None,
+        help="Tracker reference FPS; null uses sequence FPS. Does not change video playback or skip frames.",
+    )
     parser.add_argument(
         "--output_root", type=Path, default=DEFAULT_OUTPUT_ROOT, help="Parent of a new timestamped output directory."
     )
@@ -444,7 +550,19 @@ def _add_benchmark_arguments(parser: ArgumentParser) -> list[str]:
         default=None,
         help="Per-sequence frame limit for short trials; null processes every declared frame.",
     )
-    return [*added, "dataset_root", "sequences", "output_root", "save_video", "save_frames", "max_frames"]
+    return [
+        *added,
+        "dataset_root",
+        "sequences",
+        "output_root",
+        "save_video",
+        "save_frames",
+        "max_frames",
+        "dataset",
+        "detection_root",
+        "visual_sequences",
+        "tracker_frame_rate",
+    ]
 
 
 register_argument_adder(benchmark_command, _add_benchmark_arguments)
