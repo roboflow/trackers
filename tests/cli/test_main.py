@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import re
 import subprocess
@@ -1166,3 +1167,23 @@ class TestTopLevelHelp:
         rendered = self._rendered_help()
 
         assert "_help" not in rendered
+
+    @pytest.mark.parametrize("command", [track_command, eval_command, tune_command, download_command])
+    def test_each_command_is_described_by_its_docstring(self, command) -> None:
+        """A command's docstring summary reaches ``--help`` only when ``docstring-parser`` is installed.
+
+        Without it, jsonargparse falls back to ``str(command)`` and lists ``<function track_command at 0x...>``.
+        """
+        rendered = self._rendered_help()
+        summary = " ".join((inspect.getdoc(command) or "").split("\n\n")[0].split())
+
+        assert summary in rendered
+        assert f"<function {command.__name__}" not in rendered
+
+    def test_track_options_are_described_by_their_docstrings(self) -> None:
+        """Option help comes from the dataclass ``Args:`` sections, read by the same parser."""
+        parser = auto_parser(_COMMANDS, args=[], as_positional=False, prog="trackers", parser_class=_CLIParser)
+        track_help = " ".join(parser._subcommands_action.choices["track"].format_help().split())
+
+        assert "Detection confidence threshold." in track_help
+        assert "MOT-format predictions output path." in track_help
