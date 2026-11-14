@@ -278,6 +278,118 @@ class TestEvaluateMOTSequencesDiscovery:
     """Sequence discovery must ignore hidden entries in both supported layouts."""
 
     @pytest.mark.parametrize(
+        ("gt_template", "sequence", "seqmap_name"),
+        [
+            pytest.param("{seq}/gt/gt.txt", "sequence1", "seqmap.txt", id="mot"),
+            pytest.param("{seq}/gt/gt.txt", "sequence1", "sequence1.txt", id="map-name-matches-sequence"),
+            pytest.param("{seq}.txt", "sequence1", "seqmap.txt", id="flat"),
+            pytest.param("{seq}.txt", ".sequence1", "seqmap.txt", id="explicit-hidden-flat"),
+        ],
+    )
+    def test_seqmap_inside_ground_truth_directory(
+        self, tmp_path: Path, gt_template: str, sequence: str, seqmap_name: str
+    ) -> None:
+        """An explicit map can live beside either supported ground-truth layout."""
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / gt_template.format(seq=sequence)
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / f"{sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = gt_dir / seqmap_name
+        seqmap.write_text(f"name\n{sequence}\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+        assert list(result.sequences) == [sequence]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
+        ("flat_sequences", "expected_mota"),
+        [
+            pytest.param(("unselected",), 1.0, id="unrelated-flat-file"),
+            pytest.param(("sequence1",), 1.0, id="partial-flat-layout"),
+            pytest.param(("sequence1", "sequence2"), -1.0, id="complete-flat-layout-takes-precedence"),
+        ],
+    )
+    def test_seqmap_prefers_complete_layout(
+        self, tmp_path: Path, flat_sequences: tuple[str, ...], expected_mota: float
+    ) -> None:
+        """Choose a layout with every selected sequence and preserve flat precedence when both do."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        for sequence in ("sequence1", "sequence2"):
+            gt_file = gt_dir / sequence / "gt" / "gt.txt"
+            gt_file.parent.mkdir(parents=True)
+            gt_file.write_text("1,1,10,10,20,20,1,1\n")
+            (tracker_dir / f"{sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        for sequence in flat_sequences:
+            (gt_dir / f"{sequence}.txt").write_text("1,1,100,100,20,20,1,1\n")
+        seqmap = tmp_path / "sequence1.txt"
+        seqmap.write_text("name\nsequence1\nsequence2\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+        assert list(result.sequences) == ["sequence1", "sequence2"]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(expected_mota)
+
+    def test_seqmap_keeps_layout_when_neither_is_complete(self, tmp_path: Path) -> None:
+        """An incomplete alternate layout cannot replace the discovered layout."""
+        gt_dir = tmp_path / "gt"
+        mot_file = gt_dir / "sequence2" / "gt" / "gt.txt"
+        mot_file.parent.mkdir(parents=True)
+        mot_file.write_text("1,1,10,10,20,20,1,1\n")
+        (gt_dir / "sequence1.txt").write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        for sequence in ("sequence1", "sequence2"):
+            (tracker_dir / f"{sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = gt_dir / "seqmap.txt"
+        seqmap.write_text("name\nsequence1\nsequence2\n")
+
+        with pytest.raises(FileNotFoundError, match=r"Ground truth file not found: .*sequence2\.txt"):
+            evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+    def test_seqmap_is_not_used_as_ground_truth(self, tmp_path: Path) -> None:
+        """A map matching a selected sequence name does not supply that sequence's GT."""
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "seqmap.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = gt_dir / "seqmap.txt"
+        seqmap.write_text("name\nseqmap\n")
+
+        with pytest.raises(FileNotFoundError, match=r"Ground truth file not found: .*seqmap\.txt"):
+            evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+    def test_seqmap_alias_is_not_a_flat_ground_truth_file(self, tmp_path: Path) -> None:
+        """A hard link to the map cannot select the flat layout for a MOT sequence."""
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "sequence1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text("name\nsequence1\n")
+        try:
+            (gt_dir / "sequence1.txt").hardlink_to(seqmap)
+        except OSError as exc:
+            pytest.skip(f"Hard links are unavailable: {exc}")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+        assert list(result.sequences) == ["sequence1"]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
         ("gt_relpath", "hidden_relpath", "hidden_sequence"),
         [
             pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
@@ -330,7 +442,8 @@ class TestEvaluateMOTSequencesDiscovery:
 
         assert list(result.sequences) == ["sequence1"]
 
-    def test_seqmap_selects_hidden_mot_sequence(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("hidden_flat_backup", [False, True])
+    def test_seqmap_selects_hidden_mot_sequence(self, tmp_path: Path, hidden_flat_backup: bool) -> None:
         """A `seqmap` still evaluates a MOT-layout sequence directory whose name starts with `.`.
 
         Discovery skips hidden directories, so the seqmap is the documented way to include one. Layout detection must
@@ -341,6 +454,8 @@ class TestEvaluateMOTSequencesDiscovery:
         gt_file = gt_dir / ".5" / "gt" / "gt.txt"
         gt_file.parent.mkdir(parents=True)
         gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        if hidden_flat_backup:
+            (gt_dir / ".5.txt").write_text("1,1,100,100,20,20,1,1\n")
         tracker_dir = tmp_path / "trackers"
         tracker_dir.mkdir()
         (tracker_dir / ".5.txt").write_text("1,1,10,10,20,20,0.9,1\n")
@@ -350,3 +465,5 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
 
         assert list(result.sequences) == [".5"]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
