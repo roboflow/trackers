@@ -14,6 +14,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from trackers.io._image import _read_image
 from trackers.io.paths import _resolve_video_output_path
 
 logger = logging.getLogger("trackers.io.video")
@@ -103,7 +104,7 @@ def _iter_image_folder_frames(
         raise ValueError(f"No supported image files found in directory: {folder}")
 
     for frame_id, path in enumerate(images, start=1):
-        frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
+        frame = _read_image(path, cv2.IMREAD_COLOR)
         if frame is None:
             raise OSError(f"Failed to read image: {path}")
         yield frame_id, frame
