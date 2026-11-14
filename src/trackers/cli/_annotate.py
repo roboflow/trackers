@@ -18,6 +18,7 @@ Infrastructure module, not a command — see :mod:`trackers.cli` for the layout 
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
 import supervision as sv
 
@@ -88,8 +89,11 @@ _LIFECYCLE_LABEL_ANNOTATOR = sv.LabelAnnotator(
     text_position=sv.Position.TOP_LEFT,
 )
 
-_STATUS_LINE_HEIGHT = 22
-_STATUS_ORIGIN = (10, 20)
+_STATUS_ORIGIN = (10, 10)
+_STATUS_TEXT_SCALE = 0.5
+_STATUS_TEXT_THICKNESS = 1
+_STATUS_TEXT_PADDING = 6
+_STATUS_LINE_GAP = 8
 
 
 def annotate_masks(
@@ -197,7 +201,7 @@ def annotate_lifecycle_boxes(
 
 
 def draw_status_lines(image: np.ndarray, lines: list[str]) -> np.ndarray:
-    """Draw a stacked status panel in the top-left corner.
+    """Draw left-aligned status rows with space between their backgrounds.
 
     Args:
         image: RGB image with shape ``(H, W, 3)``.
@@ -214,16 +218,25 @@ def draw_status_lines(image: np.ndarray, lines: list[str]) -> np.ndarray:
     scene = image.copy()
     origin_x, origin_y = _STATUS_ORIGIN
     for index, line in enumerate(lines):
+        (text_width, text_height), baseline = cv2.getTextSize(
+            line, cv2.FONT_HERSHEY_SIMPLEX, _STATUS_TEXT_SCALE, _STATUS_TEXT_THICKNESS
+        )
+        padding = max(_STATUS_TEXT_PADDING, baseline)
+        line_height = text_height + 2 * padding + _STATUS_LINE_GAP
+        # Supervision centres text on its anchor. Exact font metrics keep each
+        # left edge fixed when the text changes, including the rollover suffix.
         scene = sv.draw_text(
             scene=scene,
             text=line,
-            text_anchor=sv.Point(x=origin_x + _text_anchor_offset(line), y=origin_y + index * _STATUS_LINE_HEIGHT),
+            text_anchor=sv.Point(
+                x=origin_x + padding + text_width // 2,
+                y=origin_y + index * line_height + padding + text_height // 2,
+            ),
             text_color=sv.Color.WHITE,
             background_color=sv.Color.BLACK,
+            text_scale=_STATUS_TEXT_SCALE,
+            text_thickness=_STATUS_TEXT_THICKNESS,
+            text_padding=padding,
+            text_font=cv2.FONT_HERSHEY_SIMPLEX,
         )
     return scene
-
-
-def _text_anchor_offset(line: str) -> int:
-    """Return half the rendered width of ``line``, since ``draw_text`` centres on its anchor."""
-    return int(len(line) * 4.0)
