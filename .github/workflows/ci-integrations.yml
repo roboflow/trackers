@@ -82,3 +82,52 @@ jobs:
               tracker.update(detections=detections, frame=frame)
           print("mask pipeline OK")
           PY
+
+  edgetam-pipeline:
+    name: EdgeTAM Extra Smoke
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: 🐍 Install uv and set Python version
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+        with:
+          python-version: "3.12"
+          activate-environment: true
+
+      - name: 🚀 Install Packages with the EdgeTAM extra
+        run: uv sync --frozen --group dev --extra edgetam
+
+      - name: 💾 Cache EdgeTAM checkpoint
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/.cache/huggingface/hub
+          key: edgetam-checkpoints-${{ runner.os }}-${{ hashFiles('src/trackers/core/masks/edgetam.py') }}
+          restore-keys: |
+            edgetam-checkpoints-${{ runner.os }}-
+
+      - name: 🎭 Smoke-test the EdgeTAM mask pipeline
+        run: |
+          uv run python - <<'PY'
+          import numpy as np
+          import supervision as sv
+
+          from trackers import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
+
+          tracker = McBytePlusPlusTracker(
+              enable_cmc=True,
+              enable_mask_manager=True,
+              edgetam_config=McBytePlusPlusMaskConfig(device="cpu"),
+          )
+          frame = np.zeros((360, 640, 3), dtype=np.uint8)
+          detections = sv.Detections(
+              xyxy=np.array([[100, 80, 200, 300]], dtype=np.float32),
+              confidence=np.array([0.9], dtype=np.float32),
+          )
+          for _ in range(2):
+              tracker.update(detections=detections, frame=frame)
+          print("EdgeTAM mask pipeline OK")
+          PY

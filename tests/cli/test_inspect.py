@@ -6,8 +6,8 @@
 
 """Tests for the ``trackers inspect`` component group.
 
-Every test here stops at command discovery, parsing and validation. These checks require no model weights; an invalid
-invocation must be rejected before inference begins.
+These tests cover command discovery, parsing, validation and use without optional model dependencies. They require no
+model weights; an invalid invocation must be rejected before inference begins.
 """
 
 from __future__ import annotations
@@ -45,23 +45,50 @@ class TestInspectRegistration:
 
     def test_every_component_names_what_it_inspects(self) -> None:
         """Component keys name the inspected thing, not the tracker that uses it."""
-        assert set(INSPECT_COMPONENTS) == {"sam", "cutie", "edgetam", "mask-manager", "mcbyte"}
+        assert set(INSPECT_COMPONENTS) == {"sam", "cutie", "edgetam", "mask-manager", "mcbyte", "mcbyteplusplus"}
 
     def test_components_are_callables(self) -> None:
         """Each entry dispatches to a command function."""
         assert all(callable(command) for command in INSPECT_COMPONENTS.values())
 
-    def test_cli_discovery_without_optional_dependencies(self) -> None:
-        """Discover commands in a fresh process with Torch and Transformers unavailable.
+    def test_cli_discovery_and_tracker_use_without_optional_dependencies(self) -> None:
+        """Discover commands and use disabled or custom masks without Torch or Transformers.
 
-        A fresh process prevents modules cached by other tests from hiding eager imports.
+        A fresh process prevents cached imports from hiding eager dependencies. Only enabling the default backend should
+        require the EdgeTAM extra.
         """
         script = """
 import sys
 sys.modules["torch"] = None
 sys.modules["transformers"] = None
+
+import numpy as np
+import supervision as sv
+from trackers import McBytePlusPlusTracker
 from trackers.cli.inspect import INSPECT_COMPONENTS
+from trackers.core.masks.dummy import DummyBoxMaskGenerator, DummyIdentityMaskPropagator
+from trackers.core.masks.manager import MaskManager
+
 assert "edgetam" in INSPECT_COMPONENTS
+assert "mcbyteplusplus" in INSPECT_COMPONENTS
+detections = sv.Detections(xyxy=np.array([[1.0, 1.0, 5.0, 7.0]]), confidence=np.ones(1))
+tracker = McBytePlusPlusTracker(enable_cmc=False, enable_mask_manager=False)
+assert tracker.update(detections).tracker_id.tolist() == [0]
+
+manager = MaskManager(DummyBoxMaskGenerator(), DummyIdentityMaskPropagator())
+tracker = McBytePlusPlusTracker(enable_cmc=False, mask_manager=manager, enable_mask_refresh=False)
+frame = np.zeros((8, 12, 3), dtype=np.uint8)
+tracker.update(detections, frame)
+tracker.update(detections, frame)
+assert tracker.last_mask_output is not None
+assert tracker.last_mask_output.tracklet_mask_dict == {0: 0}
+
+try:
+    McBytePlusPlusTracker(enable_cmc=False, enable_mask_manager=True)
+except ImportError as error:
+    assert "trackers[edgetam]" in str(error)
+else:
+    raise AssertionError("The default mask backend must report its missing dependencies.")
 """
         # Both executable and script are fixed test inputs, with no shell involved.
         result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)  # noqa: S603
