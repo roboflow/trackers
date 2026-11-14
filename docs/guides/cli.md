@@ -5,13 +5,14 @@ description: One-page reference for every trackers CLI command and subcommand, i
 
 # CLI Reference
 
-Every command the `trackers` CLI exposes, in one table, plus the full flag reference for `trackers inspect`'s four subcommands — the one part of the CLI with no flag table anywhere else in the docs.
+Every command the `trackers` CLI exposes, in one table, plus the full flag reference for the `trackers inspect` subcommands.
 
 **What you'll learn:**
 
 - Every top-level command and subcommand the CLI exposes
 - Where each command's detailed guide and flag table lives
-- The full flag reference for `trackers inspect sam` / `cutie` / `mask-manager` / `mcbyte`
+- The full flag reference for `trackers inspect sam` / `cutie` / `edgetam` / `mask-manager` / `mcbyte`
+- The [EdgeTAM inspection workflow](inspect.md#inspect-edgetam) and its built-in `trackers inspect edgetam --help` reference
 
 ---
 
@@ -23,7 +24,7 @@ Get started by installing the package.
 pip install trackers
 ```
 
-`inspect` subcommands additionally need the `mask` extra — see [Requires the mask extra](#requires-the-mask-extra) below. For more options, see the [install guide](install.md).
+`inspect` subcommands additionally need the `mask` or `edgetam` extra — see [Optional inspection dependencies](#optional-inspection-dependencies) below. For more options, see the [install guide](install.md).
 
 ---
 
@@ -79,6 +80,11 @@ pip install trackers
       <td><a href="#inspect-subcommands">Below</a></td>
     </tr>
     <tr>
+      <td><code>trackers inspect edgetam</code></td>
+      <td>Replay EdgeTAM mask creation, propagation, additions, removals and bounded sessions.</td>
+      <td><a href="#inspect-subcommands">Below</a></td>
+    </tr>
+    <tr>
       <td><code>trackers inspect mcbyte</code></td>
       <td>Compare locked-IoU vs. mask-conditioned McByte on one sequence.</td>
       <td><a href="#inspect-subcommands">Below</a></td>
@@ -93,16 +99,22 @@ pip install trackers
 
 For a narrative walkthrough of `track`, `eval`, `download`, or `tune`, see their own guides linked above. For `inspect`, see the [Inspect the Mask Pipeline guide](inspect.md) for worked examples — the flag tables below cover the full surface of each subcommand.
 
-Every `trackers` subcommand accepts `--config <file>` to load arguments from a YAML file, and hyphens and underscores are interchangeable in flag names (`--cmc-downscale` and `--cmc_downscale` are the same option). Boolean flags gain a negated `--no_<name>` counterpart. A nested option group (e.g. `--tracker.mask.*`) exposes a `.help` sub-command — `--tracker.mask.help` lists that group's fields without printing the rest of `--help`.
+Every `trackers` subcommand accepts `--config <file>` to load arguments from a YAML or JSON file, and hyphens and underscores are interchangeable in flag names (`--cmc-downscale` and `--cmc_downscale` are the same option). Boolean flags gain a negated `--no_<name>` counterpart. A nested option group (e.g. `--tracker.mask.*`) exposes a `.help` sub-command — `--tracker.mask.help` lists that group's fields without printing the rest of `--help`.
 
 ---
 
-## Requires the mask extra
+## Optional inspection dependencies
 
-All four `inspect` subcommands build SAM and Cutie, so install them first:
+For `sam`, `cutie`, `mask-manager` and `mcbyte`, install the SAM/Cutie dependencies:
 
 ```bash
 pip install "trackers[mask]"
+```
+
+For `edgetam`, install the EdgeTAM dependencies:
+
+```bash
+pip install "trackers[edgetam]"
 ```
 
 Without the extra, the command exits with an install hint rather than a traceback. For more options, see the [install guide](install.md).
@@ -236,6 +248,87 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
           <td><code>--cutie_config_name</code></td>
           <td>Cutie Hydra config name.</td>
           <td><code>eval_config</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+=== "edgetam"
+
+    `trackers inspect edgetam` — see the [inspection guide](inspect.md#inspect-edgetam) for event timing, session rollover and shared Cutie/EdgeTAM replay examples.
+
+    <table>
+      <colgroup>
+        <col style="width: 40%">
+        <col style="width: 40%">
+        <col style="width: 20%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Argument</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>--image_dir</code></td>
+          <td>Directory containing input images, selected in filename order.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><code>--start_file</code></td>
+          <td>First frame filename, inclusive.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><code>--end_file</code></td>
+          <td>Last frame filename, inclusive.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><code>--box</code></td>
+          <td>Initial <code>xyxy</code> boxes as one list. IDs start at one in box order; an empty list starts inactive.</td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><code>--add_at</code></td>
+          <td>New boxes as <code>filename:x1,y1,x2,y2</code>. Each gets a new ID on that image before propagation to the next selected image. Append with <code>--add_at+</code>.</td>
+          <td>none</td>
+        </tr>
+        <tr>
+          <td><code>--remove_at</code></td>
+          <td>Removals as <code>filename:manual_id</code>, applied before propagation to that image. Append with <code>--remove_at+</code>.</td>
+          <td>none</td>
+        </tr>
+        <tr>
+          <td><code>--output_root</code></td>
+          <td>Root for timestamped annotated images, replay configuration and per-frame run metadata.</td>
+          <td><code>outputs/inspect/edgetam</code></td>
+        </tr>
+        <tr>
+          <td><code>--device</code></td>
+          <td>PyTorch device. <code>auto</code> selects CUDA when available, otherwise CPU. Inference uses fp32.</td>
+          <td><code>auto</code></td>
+        </tr>
+        <tr>
+          <td><code>--model_id</code></td>
+          <td>Transformers-compatible EdgeTAM checkpoint ID or local path.</td>
+          <td><code>yonigozlan/EdgeTAM-hf</code></td>
+        </tr>
+        <tr>
+          <td><code>--revision</code></td>
+          <td>Model and processor revision override. When omitted, the default model uses a pinned commit; custom models use Transformers' revision selection.</td>
+          <td>none</td>
+        </tr>
+        <tr>
+          <td><code>--max_session_frames</code></td>
+          <td>Maximum stored images including the seed, at least two. Applies to every input source; <code>null</code> disables rollover.</td>
+          <td><code>200</code></td>
+        </tr>
+        <tr>
+          <td><code>--mask_threshold</code></td>
+          <td>Logit threshold for binary masks, not a confidence gate.</td>
+          <td><code>0.0</code></td>
         </tr>
       </tbody>
     </table>
