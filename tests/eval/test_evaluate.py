@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import warnings
 from pathlib import Path
 
@@ -199,6 +201,81 @@ class TestEvaluateMOTSequence:
 
         mot20_warnings = [w for w in caught if issubclass(w.category, UserWarning) and "MOT20" in str(w.message)]
         assert bool(mot20_warnings) is expect_warning
+
+
+class TestEvaluateUnusedClassColumn:
+    """Ground truth with `-1` in the class column, as in MOT15, must not score as a sequence with no ground truth."""
+
+    _ROWS = "1,1,100,200,50,80,1,-1,-1,-1\n1,2,300,150,60,90,1,-1,-1,-1\n2,1,105,198,50,80,1,-1,-1,-1\n"
+
+    def _write_files(self, tmp_path: Path) -> tuple[Path, Path]:
+        gt_file = tmp_path / "gt.txt"
+        gt_file.write_text(self._ROWS)
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text(self._ROWS)
+        return gt_file, tracker_file
+
+    def test_default_config_raises_instead_of_scoring_zero(self, tmp_path: Path) -> None:
+        """Identical predictions used to give TP=0, FN=0 and every prediction a false positive."""
+        gt_file, tracker_file = self._write_files(tmp_path)
+
+        with pytest.raises(ValueError, match=r"\[-1\].*class_config"):
+            evaluate_mot_sequence(gt_file, tracker_file)
+
+    def test_naming_the_class_scores_the_sequence(self, tmp_path: Path) -> None:
+        """The configuration the error points to scores the same file."""
+        gt_file, tracker_file = self._write_files(tmp_path)
+
+        result = evaluate_mot_sequence(gt_file, tracker_file, class_config=MOTClassConfig(scored_classes=(-1,)))
+
+        assert result.CLEAR is not None
+        assert result.CLEAR.CLR_TP == 3
+        assert result.CLEAR.MOTA == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_ROWS, id="all-placeholder"),
+            pytest.param(
+                "1,1,100,200,50,80,1,1,1\n1,2,300,150,60,90,1,1,1\n2,1,105,198,50,80,1,1,1\n2,2,300,150,60,90,1,-1,-1\n",
+                id="mixed-with-scored",
+            ),
+        ],
+    )
+    def test_config_the_error_suggests_scores_every_row(self, tmp_path: Path, rows: str) -> None:
+        """Following the message must score all rows, not swap which rows are dropped."""
+        gt_file = tmp_path / "gt.txt"
+        gt_file.write_text(rows)
+        tracker_file = tmp_path / "tracker.txt"
+        tracker_file.write_text(rows)
+
+        with pytest.raises(ValueError, match=r"--class_config '(\{.*\})'") as error:
+            evaluate_mot_sequence(gt_file, tracker_file)
+        suggested = re.search(r"--class_config '(\{.*\})'", str(error.value))
+        assert suggested is not None
+
+        result = evaluate_mot_sequence(
+            gt_file, tracker_file, class_config=MOTClassConfig(**json.loads(suggested.group(1)))
+        )
+
+        assert result.CLEAR is not None
+        assert result.CLEAR.CLR_TP == len(rows.splitlines())
+        assert result.CLEAR.CLR_FP == 0
+        assert result.CLEAR.MOTA == pytest.approx(1.0)
+
+    def test_error_names_the_file_in_a_multi_sequence_run(self, tmp_path: Path) -> None:
+        """One bad file aborts the whole run, so the error has to say which file it was."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "tracker"
+        gt_dir.mkdir()
+        tracker_dir.mkdir()
+        good_rows = "1,1,100,200,50,80,1,1,1\n"
+        for name, rows in (("a", good_rows), ("b", self._ROWS), ("c", good_rows)):
+            (gt_dir / f"{name}.txt").write_text(rows)
+            (tracker_dir / f"{name}.txt").write_text(rows)
+
+        with pytest.raises(ValueError, match=r"b\.txt has classes \[-1\]"):
+            evaluate_mot_sequences(gt_dir, tracker_dir)
 
 
 class TestEvaluateMOTSequencesClassConfig:

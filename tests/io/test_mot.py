@@ -282,6 +282,86 @@ class TestMotDistractorPreprocessing:
         assert sequence.num_tracker_ids == 2
 
 
+class TestUnnamedGroundTruthClasses:
+    """A ground-truth class below 1 that the class config does not name must not silently empty the sequence."""
+
+    _BOX = (0.0, 0.0, 10.0, 10.0)
+
+    @pytest.mark.parametrize(
+        ("classes", "named_in_message"),
+        [
+            pytest.param([-1, -1], r"\[-1\]", id="unused-column"),
+            pytest.param([0, 0], r"\[0\]", id="zero-based"),
+            pytest.param([1, -1], r"\[-1\]", id="mixed-with-scored"),
+            pytest.param([0, -1], r"\[-1, 0\]", id="several-sorted"),
+        ],
+    )
+    def test_unnamed_class_raises_and_names_it(self, classes: list[int], named_in_message: str) -> None:
+        """The error lists the offending classes and the option that fixes them."""
+        ground_truth = {1: _frame([1, 2], [list(self._BOX), [50, 50, 10, 10]], [1.0, 1.0], classes)}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        with pytest.raises(ValueError, match=rf"{named_in_message}.*class_config"):
+            _prepare_mot_sequence(ground_truth, tracker)
+
+    @pytest.mark.parametrize(
+        ("class_config", "python_args", "cli_args"),
+        [
+            pytest.param("mot17", "scored_classes=(1, -1))", '{"scored_classes": [1, -1]}', id="default-distractors"),
+            pytest.param(
+                "mot20",
+                "scored_classes=(1, -1), distractor_classes=(2, 6, 7, 8, 12))",
+                '{"scored_classes": [1, -1], "distractor_classes": [2, 6, 7, 8, 12]}',
+                id="preset-distractors-kept",
+            ),
+        ],
+    )
+    def test_suggestion_keeps_the_rest_of_the_config(self, class_config: str, python_args: str, cli_args: str) -> None:
+        """Following the message must not stop scoring class 1 rows or lose the preset's distractors."""
+        ground_truth = {1: _frame([1, 2], [list(self._BOX), [50, 50, 10, 10]], [1.0, 1.0], [1, -1])}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        with pytest.raises(ValueError) as error:
+            _prepare_mot_sequence(ground_truth, tracker, class_config=class_config)  # type: ignore[arg-type]
+
+        assert python_args in str(error.value)
+        assert f"--class_config '{cli_args}'" in str(error.value)
+
+    def test_classes_named_by_the_config_are_accepted(self) -> None:
+        """Naming the class as scored is the way to evaluate a file with no class labels."""
+        ground_truth = {1: _frame([1], [list(self._BOX)], [1.0], [-1])}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker, class_config=MOTClassConfig(scored_classes=(-1,)))
+
+        assert sequence.num_gt_dets == 1
+
+    def test_ignored_rows_do_not_raise(self) -> None:
+        """A row marked ignored (conf=0) is dropped whatever its class, so its class does not matter."""
+        ground_truth = {1: _frame([1, 2], [list(self._BOX), [50, 50, 10, 10]], [1.0, 0.0], [1, -1])}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker)
+
+        assert sequence.num_gt_dets == 1
+
+    def test_positive_unnamed_class_is_still_only_left_unscored(self) -> None:
+        """MOT Challenge classes above 1 that are neither scored nor distractors keep their existing treatment."""
+        ground_truth = {1: _frame([1, 2], [list(self._BOX), [50, 50, 10, 10]], [1.0, 1.0], [1, 3])}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        sequence = _prepare_mot_sequence(ground_truth, tracker)
+
+        assert sequence.num_gt_dets == 1
+
+    def test_tracker_classes_are_not_checked(self) -> None:
+        """Tracker output carries -1 in the class column by design and must keep scoring."""
+        ground_truth = {1: _frame([1], [list(self._BOX)], [1.0], [1])}
+        tracker = {1: _frame([10], [list(self._BOX)], [1.0], [-1])}
+
+        assert _prepare_mot_sequence(ground_truth, tracker).num_tracker_dets == 1
+
+
 class TestClassMask:
     """The `_class_mask` fast path must be byte-identical to `np.isin`."""
 

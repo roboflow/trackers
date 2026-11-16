@@ -74,8 +74,9 @@ def evaluate_mot_sequence(
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
-        ValueError: If an unsupported metric family is requested, or if `class_config` is neither a supported
-            preset name nor a `MOTClassConfig`.
+        ValueError: If an unsupported metric family is requested, if `class_config` is neither a supported
+            preset name nor a `MOTClassConfig`, or if a ground-truth row not marked ignored has a class below 1
+            that `class_config` does not name.
 
     Examples:
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
@@ -164,7 +165,7 @@ def _evaluate_mot_sequence_resolved(
     tracker_data = load_mot_file(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
-    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config)
+    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config, ground_truth_path=gt_path)
 
     # Compute metrics
     clear_metrics: CLEARMetrics | None = None
@@ -282,8 +283,9 @@ def evaluate_mot_sequences(
 
     Raises:
         FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
-        ValueError: If no sequences are found, if an unsupported metric family is requested, or if `class_config`
-            is neither a supported preset name nor a `MOTClassConfig`.
+        ValueError: If no sequences are found, if an unsupported metric family is requested, if `class_config`
+            is neither a supported preset name nor a `MOTClassConfig`, or if a ground-truth row not marked ignored
+            has a class below 1 that `class_config` does not name.
 
     Examples:
         Auto-detect layout and evaluate all sequences:

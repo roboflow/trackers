@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **MOT evaluation no longer silently drops ground-truth rows with a class below 1** — MOT15-style files, and the example in the evaluation docs, carry `-1` in column 8, which the loader reads as the class. Those rows matched no scored class, so they were dropped with no warning: predictions identical to an all `-1` file gave MOTA 0 and every prediction a false positive. `evaluate_mot_sequence` and `evaluate_mot_sequences` now raise `ValueError` when a row not marked ignored has a class below 1 that the class config does not name, and `trackers eval` exits 1 with that message. The message names the file and the classes, and gives a `class_config` value that scores those rows alongside the classes already scored. A file mixing class 1 with such rows used to return numbers for the class 1 rows only and now raises too. Classes of 1 and above, ignored rows and tracker files are not checked. `trackers tune` has no `class_config` option, so there the file has to be fixed ([#661](https://github.com/roboflow/trackers/pull/661)).
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
