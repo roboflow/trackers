@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **Frames under non-ASCII paths on Windows** — image-folder sources, MOT `img1` frames and the `trackers inspect` commands failed to read or save images whose path had characters outside ASCII, such as an accented, Cyrillic or CJK folder name, because OpenCV reads Windows paths in the ANSI code page. These files are now read and written through NumPy and decoded or encoded with OpenCV.
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added

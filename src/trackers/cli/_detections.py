@@ -243,7 +243,9 @@ def load_rgb_frame(frame_path: Path) -> np.ndarray:
     """
     import cv2
 
-    frame_bgr = cv2.imread(str(frame_path))
+    from trackers.io._image import _read_image
+
+    frame_bgr = _read_image(frame_path)
     if frame_bgr is None:
         raise RuntimeError(f"cv2.imread failed for frame: {frame_path}")
     return cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
