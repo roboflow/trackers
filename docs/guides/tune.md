@@ -89,7 +89,7 @@ data
     └── ...
 ```
 
-Each sequence must exist in both directories with the same filename (`{sequence}.txt`).
+Each sequence must exist in both directories with the same filename (`{sequence}.txt`). Ground truth can also use the `{sequence}/gt/gt.txt` layout of a downloaded dataset.
 
 Use MOT format lines:
 

@@ -19,7 +19,7 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.eval.evaluate import evaluate_mot_sequences
+from trackers.eval.evaluate import _detect_format, _get_paths, evaluate_mot_sequences
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
@@ -100,7 +100,7 @@ class Tuner:
 
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).
-        gt_dir: Directory of ground-truth MOT files.
+        gt_dir: Directory of ground-truth MOT files, as ``{seq}.txt`` or ``{seq}/gt/gt.txt``.
         detections_dir: Directory of pre-computed detection files in MOT
             format — one ``{seq}.txt`` per sequence, where each line must
             contain at least ``<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,
@@ -327,11 +327,9 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        missing_gt_files = [
-            str(self._gt_dir / f"{seq_name}.txt")
-            for seq_name in self._sequences
-            if not (self._gt_dir / f"{seq_name}.txt").is_file()
-        ]
+        gt_format = _detect_format(self._gt_dir)
+        gt_paths = [_get_paths(self._gt_dir, self._detections_dir, seq, gt_format)[0] for seq in self._sequences]
+        missing_gt_files = [str(gt_path) for gt_path in gt_paths if not gt_path.is_file()]
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
 
