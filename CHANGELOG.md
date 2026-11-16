@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **CMC no longer swaps the corner velocities of a shrinking `XYXYStateEstimator` box** — `_warp_kalman_states` sorted XYXY velocities per axis, so with `BoTSORTTracker`, `McByteTracker` or `OCSORTTracker` on the non-default XYXY estimator, every CMC step, even an identity transform, swapped a shrinking box's velocities and the filter predicted it growing. Velocities are no longer sorted: each is mapped through the linear part and stays with the corner that becomes the new edge, so for an upright box a warped velocity equals the motion of the warped box as long as one step does not invert the box. ([#662](https://github.com/roboflow/trackers/pull/662))
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
