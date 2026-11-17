@@ -164,6 +164,8 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     one detection with comma-separated values:
     `<frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, ...`
 
+    Frame numbers start at 1. Evaluation does not score rows on lower frames.
+
     Args:
         path: Path to the MOT format text file.
 

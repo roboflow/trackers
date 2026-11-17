@@ -89,7 +89,7 @@ Ground-truth and tracker output files use the MOT Challenge text format.
 2,1,105,198,50,80,1,-1,-1,-1
 ```
 
-Each line contains the frame number, object ID, bounding box (`left`, `top`, `width`, `height`), confidence score, and 3D position (set to `-1` when unused).
+Each line contains the frame number, object ID, bounding box (`left`, `top`, `width`, `height`), confidence score, and 3D position (set to `-1` when unused). Frame numbers start at 1 and rows with a lower frame number are not scored.
 
 ---
 
