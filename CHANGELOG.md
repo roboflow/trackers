@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **`trackers --help` describes every command and option** — `docstring-parser` is now a dependency, so jsonargparse reads summaries and option help from docstrings; without it, `track`, `eval`, `tune` and `download` were listed as `<function track_command at 0x...>` and dataclass options showed only their type and default ([#670](https://github.com/roboflow/trackers/pull/670)).
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
