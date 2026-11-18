@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from trackers.eval.clear import compute_clear_metrics
+from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 
 
 @pytest.mark.parametrize(
@@ -49,7 +49,7 @@ from trackers.eval.clear import compute_clear_metrics
             [np.array([0, 1]), np.array([0, 1])],
             [np.empty((0, 2)), np.empty((0, 2))],
             0.5,
-            {"CLR_TP": 0, "CLR_FN": 0, "CLR_FP": 4, "IDSW": 0, "ML": 0},
+            {"CLR_TP": 0, "CLR_FN": 0, "CLR_FP": 4, "IDSW": 0, "ML": 0, "MOTA": -4.0, "MODA": -4.0, "sMOTA": -4.0},
         ),
         # Single ID switch
         (
@@ -374,3 +374,41 @@ def test_contiguity_gap_at_end_falls_back_correctly() -> None:
     gapped = compute_clear_metrics(gt_ids_with_gap, tracker_ids, similarity_scores)
 
     assert gapped == baseline
+
+
+@pytest.mark.parametrize(
+    ("gt_ids", "tracker_ids", "similarity_scores"),
+    [
+        # False positives only - no GT
+        (
+            [np.array([]), np.array([])],
+            [np.array([0, 1]), np.array([0, 2])],
+            [np.empty((0, 2)), np.empty((0, 2))],
+        ),
+        # No tracker detections
+        ([np.array([0, 1])], [np.array([])], [np.empty((2, 0))]),
+        # Both empty
+        ([np.array([])], [np.array([])], [np.empty((0, 0))]),
+        # A false positive, an ID switch and a miss
+        (
+            [np.array([0, 1]), np.array([0, 1]), np.array([0, 1])],
+            [np.array([10, 11, 12]), np.array([20, 11]), np.array([20])],
+            [
+                np.array([[0.9, 0.1, 0.1], [0.1, 0.9, 0.1]]),
+                np.array([[0.9, 0.1], [0.1, 0.9]]),
+                np.array([[0.9], [0.1]]),
+            ],
+        ),
+    ],
+)
+def test_aggregating_a_single_sequence_returns_its_own_metrics(
+    gt_ids: list[np.ndarray[Any, np.dtype[Any]]],
+    tracker_ids: list[np.ndarray[Any, np.dtype[Any]]],
+    similarity_scores: list[np.ndarray[Any, np.dtype[Any]]],
+) -> None:
+    """Aggregating a single sequence returns that sequence's own metrics, including for empty input."""
+    single = compute_clear_metrics(gt_ids, tracker_ids, similarity_scores)
+    aggregated = aggregate_clear_metrics([single])
+
+    for key, value in single.items():
+        assert aggregated[key] == pytest.approx(value), f"Mismatch for {key}: {aggregated[key]} != {value}"
