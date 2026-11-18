@@ -47,18 +47,19 @@ def compute_clear_metrics(
     Returns:
         Dictionary containing CLEAR metrics:
         - `MOTA`: Multiple Object Tracking Accuracy as `float` in range
-            `(-inf, 1]`. Computed as `(TP - FP - IDSW) / (TP + FN)`.
+            `(-inf, 1]`. Computed as `(TP - FP - IDSW) / (TP + FN)`, with the
+            denominator clamped to at least 1 (`-FP` without any ground truth).
         - `MOTP`: Multiple Object Tracking Precision as `float` in range
             `[0, 1]`. Average similarity of matched pairs.
         - `MODA`: Multiple Object Detection Accuracy as `float`. Computed as
-            `(TP - FP) / (TP + FN)`.
+            `(TP - FP) / (TP + FN)`, clamped like `MOTA`.
         - `CLR_Re`: Recall as `float`. Computed as `TP / (TP + FN)`.
         - `CLR_Pr`: Precision as `float`. Computed as `TP / (TP + FP)`.
         - `MTR`: Mostly Tracked ratio as `float`.
         - `PTR`: Partially Tracked ratio as `float`.
         - `MLR`: Mostly Lost ratio as `float`.
         - `sMOTA`: Summed MOTA as `float`. Computed as
-            `(MOTP_sum - FP - IDSW) / (TP + FN)`.
+            `(MOTP_sum - FP - IDSW) / (TP + FN)`, clamped like `MOTA`.
         - `CLR_TP`: True positives (correct matches) as `int`.
         - `CLR_FN`: False negatives (missed GTs) as `int`.
         - `CLR_FP`: False positives (extra detections) as `int`.
@@ -136,18 +137,20 @@ def compute_clear_metrics(
             "CLR_Frames": num_frames,
         }
 
-    # Handle edge case: no GT detections
+    # Handle edge case: no GT detections. Every tracker detection is a false positive, so MOTA, MODA and sMOTA are
+    # -FP / max(1, 0), as in `aggregate_clear_metrics`. TrackEval returns 0 here.
     if num_gt_dets == 0:
+        score_without_gt = -float(num_tracker_dets)
         return {
-            "MOTA": 0.0,
+            "MOTA": score_without_gt,
             "MOTP": 0.0,
-            "MODA": 0.0,
+            "MODA": score_without_gt,
             "CLR_Re": 0.0,
             "CLR_Pr": 0.0,
             "MTR": 0.0,
             "PTR": 0.0,
             "MLR": 0.0,
-            "sMOTA": 0.0,
+            "sMOTA": score_without_gt,
             "CLR_TP": 0,
             "CLR_FN": 0,
             "CLR_FP": num_tracker_dets,

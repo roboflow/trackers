@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **`compute_clear_metrics` scores a sequence without ground truth like `aggregate_clear_metrics`** — `MOTA`, `MODA` and `sMOTA` were `0.0` for a sequence with tracker detections but no ground truth, while the aggregate gives `-FP`. They are now `-FP`. Combined results are unchanged; TrackEval returns `0` for such a sequence ([#672](https://github.com/roboflow/trackers/pull/672)).
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
