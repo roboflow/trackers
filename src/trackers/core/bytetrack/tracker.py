@@ -184,9 +184,11 @@ class ByteTrackTracker(BaseTracker):
         iou_matrix = self.iou.compute(predicted_boxes, high_boxes)
         matched, unmatched_tracks, unmatched_high = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
+        ByteTrackTracklet.update_batch(
+            [self.tracks[row] for row, _ in matched], [high_boxes[col] for _, col in matched]
+        )
         for row, col in matched:
             track = self.tracks[row]
-            track.update(high_boxes[col])
             if (
                 track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1
@@ -202,9 +204,11 @@ class ByteTrackTracker(BaseTracker):
         iou_matrix = self.iou.compute(remaining_boxes, low_boxes)
         matched, _, unmatched_low = self._get_associated_indices(iou_matrix, self.minimum_iou_threshold)
 
+        ByteTrackTracklet.update_batch(
+            [remaining_tracks[row] for row, _ in matched], [low_boxes[col] for _, col in matched]
+        )
         for row, col in matched:
             track = remaining_tracks[row]
-            track.update(low_boxes[col])
             if (
                 track.number_of_successful_consecutive_updates >= self.minimum_consecutive_frames
                 and track.tracker_id == -1

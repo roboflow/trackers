@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -136,6 +138,74 @@ class KalmanFilter:
         # Reference the posterior (debug/inspection only; see predict()).
         self.state_post = self.state
         self.state_covariance_post = self.state_covariance
+
+    @staticmethod
+    def update_batch(
+        filters: Sequence[KalmanFilter],
+        measurements: Sequence[NDArray[np.float64]],
+        *,
+        check_models: bool = True,
+    ) -> None:
+        """Update several filters with one observation each, using batched linear algebra.
+
+        The filters must describe the same model (equal ``dim_x``, ``dim_z``, ``observation_mtx``
+        and ``measurement_noise``) — as filters owned by tracklets of one tracker do. Only the
+        state and covariance differ, so the algebra is stacked into `(N, dim_x, 1)` /
+        `(N, dim_x, dim_x)` arrays and evaluated once. Each filter ends up in the same state as
+        calling `update` on it individually.
+
+        Args:
+            filters: Filters to update; at least one.
+            measurements: One measurement per filter, each shaped `(dim_z, 1)`.
+            check_models: Verify that every filter shares the reference model. Callers that
+                already know it — the tracklets of one tracker are constructed from one estimator
+                class — can turn this off to skip the per-filter matrix comparison.
+
+        Raises:
+            ValueError: If the two sequences differ in length, or the filters do not share one model.
+        """
+        if len(filters) != len(measurements):
+            raise ValueError("filters and measurements must have the same length")
+        if not filters:
+            return
+
+        first = filters[0]
+        dim_x, dim_z = first.dim_x, first.dim_z
+        for kf in filters:
+            if kf.dim_x != dim_x or kf.dim_z != dim_z:
+                raise ValueError("update_batch requires filters with equal dimensions")
+            if check_models and (
+                not np.array_equal(kf.observation_mtx, first.observation_mtx)
+                or not np.array_equal(kf.measurement_noise, first.measurement_noise)
+            ):
+                raise ValueError("update_batch requires filters with the same model")
+
+        states = np.stack([kf.state for kf in filters])
+        covariances = np.stack([kf.state_covariance for kf in filters])
+        observations = np.stack([np.asarray(z, dtype=np.float64).reshape((dim_z, 1)) for z in measurements])
+
+        observation_mtx = first.observation_mtx
+        measurement_noise = first.measurement_noise
+
+        innovations = observations - observation_mtx @ states
+        cov_times_obs_t = covariances @ observation_mtx.T
+        innovations_cov = observation_mtx @ cov_times_obs_t + measurement_noise
+        kalman_gains = cov_times_obs_t @ np.linalg.inv(innovations_cov)
+
+        states_post = states + kalman_gains @ innovations
+        i_kh = first._identity - kalman_gains @ observation_mtx
+        i_kh_t = i_kh.transpose(0, 2, 1)
+        gain_t = kalman_gains.transpose(0, 2, 1)
+        covariances_post = i_kh @ covariances @ i_kh_t + kalman_gains @ measurement_noise @ gain_t
+
+        for i, kf in enumerate(filters):
+            kf.state = states_post[i]
+            kf.state_covariance = covariances_post[i]
+            kf.kalman_gain = kalman_gains[i]
+            kf.innovation = innovations[i]
+            kf.innovation_cov = innovations_cov[i]
+            kf.state_post = kf.state
+            kf.state_covariance_post = kf.state_covariance
 
     def get_state(self) -> dict:
         """Get current filter state for saving.
