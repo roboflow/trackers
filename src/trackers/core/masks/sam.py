@@ -30,6 +30,21 @@ SAM_RELEASE_URL = "https://dl.fbaipublicfiles.com/segment_anything"
 
 
 class SAMAsset(Enum):
+    """Default SAM checkpoints that can be downloaded automatically.
+
+    Each member bundles the checkpoint file name with the MD5 hash that is passed to
+    the downloader to validate the file. The download URL and the default local path
+    are derived from the file name.
+
+    Attributes:
+        filename: Name of the checkpoint file on the SAM release server.
+        md5_hash: Expected MD5 checksum of the checkpoint file.
+
+    Example:
+        >>> SAMAsset.VIT_B.filename
+        'sam_vit_b_01ec64.pth'
+    """
+
     VIT_B = (
         "sam_vit_b_01ec64.pth",
         "01ec64d29a2fca3f0661936605ae66f8",
@@ -41,10 +56,30 @@ class SAMAsset(Enum):
 
     @property
     def url(self) -> str:
+        """Download URL of the checkpoint.
+
+        Returns:
+            The SAM release base URL joined with the checkpoint file name.
+
+        Example:
+            >>> SAMAsset.VIT_B.url
+            'https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth'
+        """
         return f"{SAM_RELEASE_URL}/{self.filename}"
 
     @property
     def default_path(self) -> Path:
+        """Default local path where the checkpoint is stored.
+
+        The path is relative to the current working directory.
+
+        Returns:
+            The path ``models/sam/<filename>``.
+
+        Example:
+            >>> SAMAsset.VIT_B.default_path.as_posix()
+            'models/sam/sam_vit_b_01ec64.pth'
+        """
         return Path("models/sam") / self.filename
 
 
