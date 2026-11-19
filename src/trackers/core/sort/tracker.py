@@ -226,7 +226,7 @@ class SORTTracker(BaseTracker):
         )
 
         # Update matched tracklets and record the det_idx -> tracklet mapping
-        self._update_matched(
+        SORTTracklet.update_batch(
             [self.tracks[row] for row, _ in matched_indices],
             [detection_boxes[col] for _, col in matched_indices],
         )
