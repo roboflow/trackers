@@ -22,7 +22,6 @@ import supervision as sv
 
 from trackers.utils.base_tracklet import BaseTracklet
 from trackers.utils.predict_timing import PredictTiming
-from trackers.utils.state_representations import BaseStateEstimator
 
 
 @dataclass
