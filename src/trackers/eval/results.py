@@ -434,6 +434,9 @@ class SequenceResult:
 
         Returns:
             Formatted table string.
+
+        Raises:
+            ValueError: If a column is unknown or its metric family was not computed.
         """
         if columns is None:
             columns = _get_available_columns(
@@ -502,6 +505,9 @@ class BenchmarkResult:
 
         Returns:
             Formatted table string.
+
+        Raises:
+            ValueError: If a column is unknown or its metric family was not computed.
         """
         if columns is None:
             columns = _get_available_columns(
@@ -574,6 +580,9 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
 
     Returns:
         The metric value.
+
+    Raises:
+        ValueError: If no computed metric family has this column.
     """
     # Check CLEAR metrics
     if result.CLEAR is not None:
@@ -593,7 +602,7 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
         if col in identity_dict:
             return identity_dict[col]
 
-    return 0
+    raise ValueError(f"Column {col!r} has no computed value: check the name, or add its metric family to metrics.")
 
 
 def _format_value(value: float | int, is_float: bool) -> str:
