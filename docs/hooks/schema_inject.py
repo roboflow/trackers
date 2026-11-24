@@ -42,8 +42,9 @@ _HOMEPAGE_FAQ = [
             "Start with ByteTrack — it's the default, has no extra dependencies, handles "
             "variable-confidence detectors well, and runs at real time latency. For the "
             "highest accuracy, McByte leads HOTA on every benchmark at default parameters "
-            "but requires optional SAM/Cutie mask dependencies; OC-SORT is the best option "
-            "when camera motion is significant. Use SORT if speed or device constraints "
+            "but requires optional SAM/Cutie mask dependencies; BoT-SORT is a strong choice "
+            "when camera motion is significant; pass each frame or a precomputed camera-motion "
+            "transform to enable compensation. Use SORT if speed or device constraints "
             "require the lightest possible tracker. See the tracker comparison for "
             "benchmark scores."
         ),
@@ -51,6 +52,7 @@ _HOMEPAGE_FAQ = [
     {
         "question": "What is multi-object tracking and how does it differ from object detection?",
         "answer": (
+            "Object detection finds and classifies objects in a single image frame. "
             "Multi-object tracking assigns a persistent ID to each detected object across "
             "video frames, maintaining continuity through occlusions, re-entries, and "
             "camera motion. Trackers use a detect-then-track approach: a detector runs on "
@@ -63,7 +65,8 @@ _HOMEPAGE_FAQ = [
         "answer": (
             "No. Roboflow Trackers works with any detector that outputs "
             "supervision.Detections objects. The library ships example pipelines using "
-            "RF-DETR but is compatible with YOLO, Detectron2, and any custom model."
+            "RF-DETR but is compatible with YOLO, Detectron2, and any custom model. "
+            "The tracker never inspects the detection model directly."
         ),
     },
     {
@@ -71,7 +74,7 @@ _HOMEPAGE_FAQ = [
         "answer": (
             "Run trackers eval against a directory of ground-truth MOT-format text files. "
             "The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a "
-            "per-sequence and combined score table."
+            "per-sequence and combined score table. See the evaluation guide for the full workflow."
         ),
     },
     {
@@ -176,13 +179,8 @@ def _build_breadcrumbs(page, config, nav):  # type: ignore[no-untyped-def]
         for item in items:
             if hasattr(item, "children") and item.children:
                 item_url = _resolve_nav_item_url(item)
-                # Nav sections (Home, Usage, Tuning, Trackers, ...) are pure
-                # groupings with no page behind them, so mkdocs gives them no
-                # URL — recording by name (not URL) is what schema.org's
-                # ListItem allows: a "name"-only entry with no "item" key.
-                # The top-level "Home" grouping duplicates the seeded Home
-                # crumb; skip recording it but still recurse into its children.
-                record = item.title is not None and item.title != "Home"
+                # Grouping-only sections have no landing page and cannot be navigated to.
+                record = bool(item_url and item.title and item.title != "Home")
                 if record:
                     path.append({"name": item.title, "url": item_url})
                 if _find_in_nav(item.children, path):

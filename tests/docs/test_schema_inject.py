@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -108,9 +109,8 @@ class TestBuildBreadcrumbs:
         assert result["itemListElement"][0]["item"] == "https://trackers.roboflow.com/"
         assert result["itemListElement"][1]["item"] == page.canonical_url
 
-    def test_includes_url_less_section_crumbs_two_levels_deep(self) -> None:
-        """Nested URL-less nav sections (mkdocs `Section` objects never carry a URL) are still recorded by name, as
-        regressed by the `_find_in_nav` `record` condition fix."""
+    def test_omits_url_less_section_crumbs_two_levels_deep(self) -> None:
+        """Intermediate breadcrumb entries link to real pages."""
         nav = _FakeNav(
             items=[
                 _FakeNavSection(
@@ -134,15 +134,9 @@ class TestBuildBreadcrumbs:
 
         assert result is not None
         items = result["itemListElement"]
-        assert [crumb["name"] for crumb in items] == [
-            "Home",
-            "Trackers",
-            "Advanced",
-            "SORT",
-        ]
-        assert "item" not in items[1]
-        assert "item" not in items[2]
-        assert items[3]["item"] == page.canonical_url
+        assert [crumb["name"] for crumb in items] == ["Home", "SORT"]
+        assert items[0]["item"] == "https://trackers.roboflow.com/"
+        assert items[1]["item"] == page.canonical_url
 
     def test_does_not_double_record_top_level_home_section(self) -> None:
         """The top-level "Home" nav grouping is skipped in the crumb path (it would duplicate the seeded Home crumb),
@@ -235,6 +229,38 @@ class TestOnPageContext:
         questions = [entry["name"] for entry in faq["mainEntity"]]
         expected = [entry["question"] for entry in schema_inject._HOMEPAGE_FAQ]
         assert questions == expected
+
+    @pytest.mark.parametrize(
+        "question",
+        [
+            "Which tracker should I use?",
+            "What is multi-object tracking and how does it differ from object detection?",
+            "Do I need a specific detector?",
+            "How do I evaluate my tracker?",
+            "What MOT datasets does the library support?",
+        ],
+    )
+    def test_faq_answer_matches_visible_homepage(self, question: str) -> None:
+        """Structured FAQ answers match the corresponding visible text."""
+        lines = (_HOOK_PATH.parents[1] / "index.md").read_text(encoding="utf-8").splitlines()
+        heading = lines.index(f"**{question}**")
+        answer = next(line for line in lines[heading + 1 :] if line and not line.startswith("<!--"))
+        answer = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", answer).replace("`", "")
+        page = _FakePage("index.md")
+        page.meta = {}
+        schema_inject.on_page_context({}, page, _SITE_CONFIG, _FakeNav(items=[_FakeNavPage("index.md")]))
+        faq = json.loads(page.meta["json_ld_faq"])
+        entry = next(entry for entry in faq["mainEntity"] if entry["name"] == question)
+
+        assert entry["acceptedAnswer"]["text"] == answer
+
+    def test_faq_recommends_camera_motion_compensation(self) -> None:
+        """Moving-camera advice recommends the tracker with compensation enabled by default."""
+        answer = next(entry["answer"] for entry in schema_inject._HOMEPAGE_FAQ if entry["question"] == "Which tracker should I use?")
+
+        assert "pass each frame or a precomputed camera-motion transform" in answer
+        assert "BoT-SORT" in answer
+        assert "OC-SORT is the best option when camera motion is significant" not in answer
 
     def test_sets_article_image_for_known_src_path(self) -> None:
         """A page listed in `_ARTICLE_IMAGES` gets its poster image on the TechArticle schema."""
