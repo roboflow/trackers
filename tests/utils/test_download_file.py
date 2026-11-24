@@ -9,6 +9,7 @@ from __future__ import annotations
 import builtins
 import hashlib
 import io
+import os
 import stat
 import zipfile
 from collections.abc import Iterator
@@ -43,6 +44,7 @@ def test_matching_cache_skips_download(tmp_path: Path, response: Mock) -> None:
     target.write_bytes(b"old")
     checksum = hashlib.md5(b"old", usedforsecurity=False).hexdigest()
     assert downloader._download_file("https://example.com/model", target, md5=checksum) is False
+    downloader.requests.get.assert_not_called()
     response.iter_content.assert_not_called()
     assert target.read_bytes() == b"old"
 
@@ -66,6 +68,23 @@ def test_download_honors_file_creation_mode(tmp_path: Path, response: Mock) -> N
     target = tmp_path / "model.pth"
     downloader._download_file("https://example.com/model", target)
     assert stat.S_IMODE(target.stat().st_mode) == stat.S_IMODE(reference.stat().st_mode)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX umask and directory permissions are required")
+@pytest.mark.parametrize("mask", [pytest.param(0o111, id="no-owner-search"), pytest.param(0o222, id="no-owner-write")])
+def test_download_with_restrictive_umask(tmp_path: Path, response: Mock, mask: int) -> None:
+    """Stage downloads under restrictive umasks while preserving the file creation mode."""
+    previous_mask = os.umask(mask)
+    try:
+        reference = tmp_path / "reference"
+        reference.write_bytes(b"reference")
+        target = tmp_path / "model.pth"
+        downloader._download_file("https://example.com/model", target)
+        assert target.read_bytes() == b"new"
+        assert stat.S_IMODE(target.stat().st_mode) == stat.S_IMODE(reference.stat().st_mode)
+        assert sorted(path.name for path in tmp_path.iterdir()) == ["model.pth", "reference"]
+    finally:
+        os.umask(previous_mask)
 
 
 @pytest.mark.parametrize("existing", [False, True])
@@ -259,10 +278,13 @@ def test_dataset_download_and_cache_reuse(
             }
         },
     )
+    get = Mock(wraps=requests.get)
+    monkeypatch.setattr(downloader.requests, "get", get)
     cache = tmp_path / "cache"
     for name in ("first", "second"):
         output = tmp_path / name
         download_dataset(name="mot17", split="train", asset="annotations", output=str(output), cache_dir=str(cache))
         assert (output / "mot17/train/fixture/gt/gt.txt").read_text() == "1,1,10,20,30,40,1,1,1\n"
+    assert get.call_count == 1
     assert (cache / "archive.zip").read_bytes() == payload
     assert list(cache.iterdir()) == [cache / "archive.zip"]

@@ -65,6 +65,8 @@ def _download_file(
             return False
 
     with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".trackers-") as temp_directory:
+        # The umask can remove owner access needed to create the staged payload.
+        os.chmod(temp_directory, stat.S_IRWXU)
         temp_path = Path(temp_directory) / destination.name
         with closing(requests.get(url, stream=True, timeout=timeout)) as response:
             response.raise_for_status()
