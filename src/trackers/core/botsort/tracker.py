@@ -96,11 +96,11 @@ class BoTSORTTracker(BaseTracker):
             Passing ``None`` (the default) is equivalent to ``IoU()`` and is
             provided for backward compatibility with existing code that did not
             supply an ``iou`` argument.
-        reid_model: Appearance encoder for appearance association: a model name
-            (curated alias, ``hf://`` URL or local path, loaded with the ``reid``
-            package's defaults) or an encoder you loaded yourself, e.g. to choose
-            the device. Requires ``frame`` in :meth:`update`. When ``None``
-            (default), behaviour matches the geometry-only BoT-SORT baseline.
+        reid_model: Appearance encoder for appearance association: a model source (curated alias, ``hf://`` or
+            ``http(s)://`` URL, or local path; see https://reid.roboflow.com/guides/loading/ for more), loaded with
+            the ``reid`` package's defaults, or an encoder you loaded yourself, e.g. to choose the device. Requires
+            ``frame`` in :meth:`update`. When ``None`` (default), behaviour matches the geometry-only BoT-SORT
+            baseline.
         reid_config: Appearance association and fusion settings. Defaults to
             :class:`ReIDConfig`. Passing it without ``reid_model`` raises
             ``ValueError``; the encoder is supplied separately.
@@ -147,14 +147,13 @@ class BoTSORTTracker(BaseTracker):
         minimum_iou_threshold_unconfirmed_assoc: float = 0.3,
         high_conf_det_threshold: float = 0.6,
         enable_cmc: bool = True,
+        cmc_method: CMCMethod = "sparseOptFlow",
+        cmc_downscale: int = 2,
         instant_first_frame_activation: bool = True,
         state_estimator_class: type[BaseStateEstimator] = XCYCWHStateEstimator,
         iou: BaseIoU | None = None,
         reid_model: ReIDEncoder | str | None = None,
         reid_config: ReIDConfig | None = None,
-        *,
-        cmc_method: CMCMethod = "sparseOptFlow",
-        cmc_downscale: int = 2,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(
             lost_track_buffer=lost_track_buffer,

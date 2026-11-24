@@ -37,7 +37,7 @@ For extra contents and other options, see the [install guide](install.md).
     tracker = BoTSORTTracker(reid_model="fastreid_mot17_sbs50", reid_config=ReIDConfig(appearance_threshold=0.2))
     ```
 
-    `reid_model` takes a curated alias, an `hf://` URL, or a local path, and loads it with the `reid` package's defaults. To choose the device or load bare weights, load the encoder yourself and pass it instead:
+    `reid_model` takes a curated alias, an `hf://` or `http(s)://` URL, or a local path, and loads it with the `reid` package's defaults. See the [`reid` loading guide](https://reid.roboflow.com/guides/loading/) for more ways to load a model. To choose the device or load bare weights, load the encoder yourself and pass it instead:
 
     ```python
     from reid import ReIDModel
@@ -48,7 +48,7 @@ For extra contents and other options, see the [install guide](install.md).
 
 === "CLI"
 
-    `--reid.model` takes a curated alias, an `hf://` URL, or a local path, and enables appearance association on its own. Tracker parameters keep their Python names, so the appearance gate is `--tracker.reid_config.appearance_threshold`. See the [CLI reference](cli.md) for every argument.
+    `--reid.model` takes a curated alias, an `hf://` or `http(s)://` URL, or a local path, and enables appearance association on its own. See the [`reid` loading guide](https://reid.roboflow.com/guides/loading/) for more ways to load a model. Tracker parameters keep their Python names, so the appearance gate is `--tracker.reid_config.appearance_threshold`. See the [CLI reference](cli.md) for every argument.
 
     ```bash
     trackers track \

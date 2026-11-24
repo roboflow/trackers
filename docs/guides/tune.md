@@ -308,7 +308,7 @@ All arguments accepted by `trackers tune`.
     </tr>
     <tr>
       <td><code>--reid.model</code></td>
-      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> URL, or local path. Adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
+      <td>ReID encoder for BoT-SORT: alias, <code>hf://</code> or <code>http(s)://</code> URL, or local path. See the <a href="https://reid.roboflow.com/guides/loading/"><code>reid</code> loading guide</a> for more. Adds <code>reid_config.appearance_threshold</code> and <code>reid_config.proximity_threshold</code> to the search. Requires <code>--images_dir</code>. Also accepts <code>--reid.device</code> and <code>--reid.architecture</code>.</td>
       <td>None</td>
     </tr>
     <tr>
