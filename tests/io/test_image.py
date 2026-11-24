@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 
+from trackers.cli._detections import load_rgb_frame
+from trackers.cli.inspect._common import load_rgb_image, save_rgb_image
 from trackers.io._image import _read_image, _write_image
 from trackers.io.frames import load_mot_frame_image
 from trackers.io.video import frames_from_source
@@ -19,6 +22,18 @@ NON_ASCII_FOLDERS = ["séquence", "動画", "видео"]
 
 
 class TestNonAsciiImagePaths:
+    def test_cli_reads_and_writes_rgb_png_dotfile(self, tmp_path: Path) -> None:
+        """Preserve RGB pixels at the requested Unicode path through all three CLI image helpers."""
+        path = tmp_path / "動画" / ".png"
+        rgb = np.array([[[17, 83, 224]]], dtype=np.uint8)
+
+        save_rgb_image(rgb, path)
+
+        encoded = np.frombuffer(path.read_bytes(), dtype=np.uint8)
+        np.testing.assert_array_equal(cv2.imdecode(encoded, cv2.IMREAD_COLOR), rgb[..., ::-1])
+        np.testing.assert_array_equal(load_rgb_image(path), rgb)
+        np.testing.assert_array_equal(load_rgb_frame(path), rgb)
+
     @pytest.mark.parametrize("folder_name", NON_ASCII_FOLDERS)
     def test_write_then_read_round_trips(self, tmp_path: Path, folder_name: str) -> None:
         image = np.random.default_rng(0).integers(0, 256, (4, 6, 3), dtype=np.uint8)

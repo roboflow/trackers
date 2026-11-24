@@ -53,7 +53,9 @@ def _write_image(path: str | Path, image: np.ndarray) -> bool:
     """
     if not _is_non_ascii_windows_path(path):
         return bool(cv2.imwrite(str(path), image))
-    success, buffer = cv2.imencode(Path(path).suffix, image)
+    # OpenCV also treats a leading dot as the codec delimiter, so ".png" is a valid filename.
+    _, dot, extension = Path(path).name.rpartition(".")
+    success, buffer = cv2.imencode(f".{extension}" if dot else "", image)
     if not success:
         return False
     try:
