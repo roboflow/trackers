@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### 🔧 Fixed
 
-- **`trackers eval` scores a results file with no rows as a tracker that output nothing** — a sequence where `trackers track` found no tracks writes such a file, and it used to raise `ValueError` and abort the whole benchmark. It now counts every ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error ([#659](https://github.com/roboflow/trackers/pull/659)).
+- **`trackers eval` scores a results file with no rows as a tracker that output nothing** — a sequence where `trackers track` found no tracks writes such a file, and it used to raise `ValueError` and abort the whole benchmark. It now counts every scored ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error ([#659](https://github.com/roboflow/trackers/pull/659)).
 
 ## [2.7.0] — 2026-11-05
 
