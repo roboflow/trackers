@@ -414,7 +414,8 @@ def _check_ground_truth_classes(
 
     MOT Challenge classes start at 1, so a lower value means the column holds something else, such as the ``-1``
     placeholder in MOT15-style files. Such rows match no scored class and would otherwise vanish, leaving a sequence
-    scored as if it had no ground truth. Rows marked ignored (``conf == 0``) are dropped whatever their class.
+    scored as if it had no ground truth. Rows marked ignored (``conf == 0``) are excluded from scored ground truth
+    regardless of class.
 
     Args:
         ground_truth_data: Ground truth data from `load_mot_file`.

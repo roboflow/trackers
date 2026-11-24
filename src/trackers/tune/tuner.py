@@ -20,9 +20,10 @@ import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
 from trackers.eval.evaluate import evaluate_mot_sequences
+from trackers.eval.mot_classes import resolve_mot_class_config
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
-from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
+from trackers.io.mot import _check_ground_truth_classes, _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.reid.encoder import _load_reid_encoder
 
 if TYPE_CHECKING:
@@ -405,6 +406,11 @@ class Tuner:
             with ``fixed_params`` so the result can be passed directly to the
             tracker constructor.
         """
+        class_config = resolve_mot_class_config("mot17")
+        for seq_name in self._sequences:
+            gt_path = self._gt_dir / f"{seq_name}.txt"
+            _check_ground_truth_classes(load_mot_file(gt_path), class_config, gt_path)
+
         self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
         if self._default_trial_params is not None:
             # Only enqueue tunable keys; fixed_params are applied in _build_tracker and

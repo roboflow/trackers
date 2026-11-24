@@ -137,6 +137,21 @@ class TestDefaultTrialParams:
         assert defaults["minimum_consecutive_frames"] == 2
 
 
+class TestTunerGroundTruthValidation:
+    def test_invalid_ground_truth_fails_before_tracking(self, tmp_path: Path) -> None:
+        """Reject an unnamed class before running the first tuning trial."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (gt_dir / "seq1.txt").write_text("1,1,10,20,100,80,1,-1,-1,-1\n")
+
+        with patch(
+            "trackers.tune.tuner._run_tracker_on_detections", wraps=tuner_module._run_tracker_on_detections
+        ) as tracking:
+            with pytest.raises(ValueError, match=r"seq1\.txt has classes \[-1\]"):
+                Tuner("bytetrack", gt_dir, det_dir, n_trials=1).run()
+
+        tracking.assert_not_called()
+
+
 class TestTunerFixedParams:
     def test_fixed_params_merged_into_best_result(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
