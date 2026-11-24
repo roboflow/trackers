@@ -240,20 +240,46 @@ class TestXCYCSRConversion:
         assert result.shape == (1, 4)
         np.testing.assert_array_almost_equal(result[0], np.array([0.0, 0.0, 1.0, 1.0]), decimal=5)
 
+    @pytest.mark.parametrize("batched", [False, True], ids=("single", "batch"))
     @pytest.mark.parametrize(
         ("dtype", "expected_dtype"),
         [
-            pytest.param(np.int64, np.float64, id="integer-promotes"),
+            pytest.param(np.int8, np.float64, id="int8-promotes"),
+            pytest.param(np.int16, np.float64, id="int16-promotes"),
+            pytest.param(np.int32, np.float64, id="int32-promotes"),
+            pytest.param(np.int64, np.float64, id="int64-promotes"),
+            pytest.param(np.uint8, np.float64, id="uint8-promotes"),
+            pytest.param(np.uint16, np.float64, id="uint16-promotes"),
+            pytest.param(np.float16, np.float16, id="float16-preserved"),
             pytest.param(np.float32, np.float32, id="float32-preserved"),
+            pytest.param(np.float64, np.float64, id="float64-preserved"),
         ],
     )
-    def test_xcycsr_to_xyxy_batch_decodes_in_floating_point(
-        self, dtype: type[np.number], expected_dtype: type[np.floating]
+    def test_xcycsr_to_xyxy_decodes_in_floating_point(
+        self, dtype: type[np.number], expected_dtype: type[np.floating], batched: bool
     ) -> None:
-        """Integer input promotes instead of truncating; float input keeps its own precision."""
-        result = xcycsr_to_xyxy(np.array([[10, 20, 25, 1]], dtype=dtype))
+        """Integer input becomes float64; floating input retains its dtype."""
+        box = np.array([10, 20, 25, 1], dtype=dtype)
+        xcycsr = box[np.newaxis, :] if batched else box
+
+        result = xcycsr_to_xyxy(xcycsr)
+
+        assert result.shape == xcycsr.shape
         assert result.dtype == expected_dtype
-        np.testing.assert_array_almost_equal(result, [[7.5, 17.5, 12.5, 22.5]], decimal=5)
+        np.testing.assert_array_equal(result.reshape(-1, 4), [[7.5, 17.5, 12.5, 22.5]])
+
+    @pytest.mark.parametrize("batched", [False, True], ids=("single", "batch"))
+    def test_xcycsr_to_xyxy_integer_product_is_promoted_before_arithmetic(self, batched: bool) -> None:
+        """An int16 scale product must not overflow before decoding."""
+        box = np.array([100, 100, 30000, 2], dtype=np.int16)
+        xcycsr = box[np.newaxis, :] if batched else box
+
+        result = xcycsr_to_xyxy(xcycsr)
+        expected = xcycsr_to_xyxy(xcycsr.astype(np.float64))
+
+        assert result.dtype == np.float64
+        assert np.isfinite(result).all()
+        np.testing.assert_allclose(result, expected)
 
     def test_xcycsr_to_xyxy_empty(self) -> None:
         """An empty (0, 4) xcycsr batch returns an empty (0, 4) xyxy batch."""

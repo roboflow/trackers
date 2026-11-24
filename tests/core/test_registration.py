@@ -14,6 +14,7 @@ from trackers.core.base import (
     BaseTracker,
     TrackerInfo,
     _extract_params_from_init,
+    _nested_search_fields,
     _normalize_type,
     _parse_docstring_arguments,
 )
@@ -311,8 +312,12 @@ class TestSearchSpaceValidation:
             CBIoUTracker,
         ):
             init_params = set(inspect.signature(tracker_cls.__init__).parameters) - {"self"}
+            nested_fields = _nested_search_fields(tracker_cls)
             for key in tracker_cls.search_space:
-                assert key in init_params, f"{tracker_cls.__name__}.search_space has invalid key: {key}"
+                group, separator, field = key.partition(".")
+                assert key in init_params or (separator and field in nested_fields.get(group, set())), (
+                    f"{tracker_cls.__name__}.search_space has invalid key: {key}"
+                )
 
     def test_search_space_invalid_key_raises_value_error(self) -> None:
         """A tracker with search_space key not in __init__ raises ValueError."""
@@ -417,6 +422,10 @@ class TestSearchSpaceValidation:
             (
                 {"x": {"type": "choice", "options": []}},  # empty options
                 r"non-empty",
+            ),
+            (
+                {"x": {"type": "uniform", "range": [0, 1], "requires": "missing"}},
+                r"\['requires'\] = 'missing' is not a parameter",
             ),
         ],
     )

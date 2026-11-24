@@ -1094,12 +1094,18 @@ def _warmed_up_tracker(tracker_id: str) -> BaseTracker:
 
 
 def _frame_with_bad_row(coordinate: float, confidence: float) -> sv.Detections:
-    """A valid detection on the track plus one row whose x_min is ``coordinate``."""
-    return sv.Detections(
-        xyxy=np.array([_TRACKED_BOX, (coordinate, 10.0, 50.0, 50.0)], dtype=np.float32),
+    """A valid detection on the track plus one row whose x_min is ``coordinate``.
+
+    The bad value is written after construction: supervision>=0.31 rejects non-finite boxes in
+    ``sv.Detections(...)``, but not boxes changed in place, which is how they can still reach a tracker.
+    """
+    detections = sv.Detections(
+        xyxy=np.array([_TRACKED_BOX, _TRACKED_BOX], dtype=np.float32),
         confidence=np.array([0.9, confidence], dtype=np.float32),
         class_id=np.zeros(2, dtype=int),
     )
+    detections.xyxy[1, 0] = coordinate
+    return detections
 
 
 def _state_snapshot(tracker: BaseTracker) -> tuple[list[tuple[int, int, int]], float | None, int]:
@@ -1151,3 +1157,124 @@ class TestNonFiniteDetections:
         np.testing.assert_array_equal(result.tracker_id, expected.tracker_id)
         np.testing.assert_array_equal(result.xyxy, expected.xyxy)
         assert _state_snapshot(tracker) == _state_snapshot(control)
+
+
+# ==========================================================================
+# 7. Input fields on empty results
+# ==========================================================================
+
+# McByte is not in ALL_TRACKER_IDS but runs mask-free on a base install.
+_EMPTY_RESULT_TRACKER_IDS = [*ALL_TRACKER_IDS, "mcbyte"]
+_MASK_SHAPE = (60, 60)
+# These trackers discard detections with confidence <= 0.1; the others return them with tracker_id=-1.
+_DISCARDS_LOW_CONFIDENCE = ("botsort", "cbiou", "mcbyte")
+
+
+def _detections_with_fields(confidence: list[float]) -> sv.Detections:
+    """One row per confidence, with a mask, a data field and frame-level metadata."""
+    count = len(confidence)
+    detections = sv.Detections(
+        xyxy=np.array([_TRACKED_BOX] * count, dtype=np.float32).reshape(-1, 4),
+        mask=np.zeros((count, *_MASK_SHAPE), dtype=bool),
+        confidence=np.array(confidence, dtype=np.float32),
+        class_id=np.zeros(count, dtype=int),
+        data={"class_name": np.array(["person"] * count, dtype=str)},
+    )
+    detections.metadata["camera"] = "cam-a"
+    return detections
+
+
+def _assert_keeps_fields(result: sv.Detections, class_names: list[str]) -> None:
+    assert len(result) == len(class_names)
+    assert result.tracker_id is not None
+    assert len(result.tracker_id) == len(class_names)
+    assert list(result.data) == ["class_name"], "update() must keep the input's data keys"
+    np.testing.assert_array_equal(result.data["class_name"], class_names)
+    assert result.mask is not None, "update() must keep the input's mask"
+    assert result.mask.shape == (len(class_names), *_MASK_SHAPE)
+    assert result.metadata == {"camera": "cam-a"}
+    assert result.xyxy.dtype == np.float32, "update() must keep the input's dtypes"
+    assert result.confidence is not None
+    assert result.confidence.dtype == np.float32
+    assert result.class_id is not None
+    assert result.class_id.dtype == np.zeros(1, dtype=int).dtype
+    assert result.mask.dtype == bool
+    assert result.data["class_name"].dtype.kind == "U"
+    assert result.tracker_id.dtype.kind == "i"
+
+
+def _empty_input_variants() -> dict[str, sv.Detections]:
+    """Zero-row inputs in the shapes that supervision versions index differently."""
+    return {
+        "empty": sv.Detections.empty(),
+        "no_optional_fields": sv.Detections(xyxy=np.empty((0, 4), dtype=np.float64)),
+        "with_fields": _detections_with_fields([]),
+        "zero_row_data_key": sv.Detections(
+            xyxy=np.empty((0, 4), dtype=np.float32), data={"class_name": np.array([], dtype=str)}
+        ),
+    }
+
+
+@pytest.mark.parametrize("variant", list(_empty_input_variants()))
+@pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
+def test_empty_result_is_fresh_and_input_unchanged(tracker_id: str, variant: str) -> None:
+    """An empty result is a new object and leaves the caller's detections unchanged."""
+    detections = _empty_input_variants()[variant]
+    expected_keys = list(detections.data)
+
+    result = _instantiate(tracker_id).update(detections)
+
+    assert result is not detections
+    assert detections.tracker_id is None, "update() must not assign tracker_id on the caller's detections"
+    assert list(detections.data) == expected_keys
+    assert result.tracker_id is not None
+    assert len(result.tracker_id) == 0
+
+
+@pytest.mark.parametrize("tracker_id", _EMPTY_RESULT_TRACKER_IDS)
+class TestEmptyResultKeepsInputFields:
+    """An empty ``update()`` result keeps ``data`` keys, ``mask`` and ``metadata``, as a non-empty result does."""
+
+    def test_without_tracks(self, tracker_id: str) -> None:
+        result = _instantiate(tracker_id).update(_detections_with_fields([]))
+
+        _assert_keeps_fields(result, [])
+
+    def test_with_live_tracks(self, tracker_id: str) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        result = tracker.update(_detections_with_fields([]), timestamp=_NEXT_TIMESTAMP)
+
+        _assert_keeps_fields(result, [])
+
+    def test_skipped_update(self, tracker_id: str) -> None:
+        tracker = _warmed_up_tracker(tracker_id)
+
+        with pytest.warns(UserWarning):
+            result = tracker.update(_detections_with_fields([]), timestamp=_BACKWARDS_TIMESTAMP)
+
+        _assert_keeps_fields(result, [])
+
+    def test_missing_fields_stay_missing(self, tracker_id: str) -> None:
+        result = _instantiate(tracker_id).update(sv.Detections(xyxy=np.empty((0, 4), dtype=np.float64)))
+
+        assert len(result) == 0
+        assert result.xyxy.dtype == np.float64, "update() must keep the input's dtypes"
+        assert result.confidence is None
+        assert result.class_id is None
+
+    @pytest.mark.parametrize(
+        "confidence",
+        [
+            pytest.param([0.05], id="below-threshold"),
+            pytest.param([0.1], id="at-threshold"),
+            pytest.param([0.05, 0.1], id="multi-row"),
+        ],
+    )
+    def test_only_low_confidence_detections(self, tracker_id: str, confidence: list[float]) -> None:
+        """Rows at or below the 0.1 confidence cut-off are dropped or kept per tracker, fields intact either way."""
+        result = _instantiate(tracker_id).update(_detections_with_fields(confidence))
+
+        kept = [] if tracker_id in _DISCARDS_LOW_CONFIDENCE else ["person"] * len(confidence)
+        _assert_keeps_fields(result, kept)
+        assert all(result.tracker_id == -1)

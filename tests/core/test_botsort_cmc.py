@@ -16,7 +16,12 @@ import pytest
 
 from trackers.core.botsort.tracklet import BoTSORTTracklet
 from trackers.utils.cmc import CMC, CMCConfig
-from trackers.utils.state_representations import XYXYStateEstimator
+from trackers.utils.state_representations import (
+    BaseStateEstimator,
+    XCYCSRStateEstimator,
+    XCYCWHStateEstimator,
+    XYXYStateEstimator,
+)
 
 # All supported CMC methods.
 ALL_METHODS = ["sparseOptFlow", "orb", "sift", "ecc"]
@@ -464,6 +469,113 @@ class TestXYXYAxisAlignedTolerance:
         tracklet.apply_cmc(H)
 
         np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
+
+
+def _dense_covariance(dim: int) -> np.ndarray:
+    """Fixed dense symmetric positive-definite matrix; no 2x2 block of it is invariant under rotation."""
+    seed = (np.arange(dim * dim, dtype=np.float64).reshape(dim, dim) * 7.0 % 11.0 - 5.0) / 5.0 + np.eye(dim)
+    return seed @ seed.T + np.eye(dim)
+
+
+_CENTRE_ESTIMATORS = [
+    pytest.param(XCYCWHStateEstimator, 8, id="xcycwh"),
+    pytest.param(XCYCSRStateEstimator, 7, id="xcycsr"),
+]
+
+
+class TestCentreStateWarpOracle:
+    """Hand-built oracle for how CMC warps centre-based (XCYCWH / XCYCSR) Kalman states.
+
+    The centre and its velocity (state indices ``[0:2]`` and ``[4:6]``) are mapped by the 2x2 linear part of the
+    transform and the centre additionally by the translation; size terms are untouched; the covariance becomes
+    ``A P A.T`` with ``A = blockdiag(R at [0:2], R at [4:6], identity elsewhere)``. Expectations are written out by
+    hand here and never produced by calling ``apply_cmc`` or any other warp entry point.
+    """
+
+    @pytest.mark.parametrize(("estimator_class", "dim"), _CENTRE_ESTIMATORS)
+    @pytest.mark.parametrize(
+        ("linear", "shift", "dtype"),
+        [
+            pytest.param(
+                [[np.cos(np.pi / 6), -np.sin(np.pi / 6)], [np.sin(np.pi / 6), np.cos(np.pi / 6)]],
+                [5.0, -3.0],
+                np.float64,
+                id="rotation-30deg",
+            ),
+            pytest.param([[0.0, -2.0], [2.0, 0.0]], [7.0, 4.0], np.float64, id="rotation-90deg-zoom-2"),
+            pytest.param([[1.5, 0.3], [-0.2, 0.8]], [0.0, 1.0], np.float64, id="shear-and-anisotropic-scale"),
+            pytest.param([[0.9, -0.1], [0.1, 0.9]], [-4.0, 2.5], np.float32, id="float32-similarity"),
+        ],
+    )
+    def test_covariance_is_conjugated_by_block_rotation(
+        self,
+        estimator_class: type[BaseStateEstimator],
+        dim: int,
+        linear: list[list[float]],
+        shift: list[float],
+        dtype: type,
+    ) -> None:
+        """A rotation / scale / shear maps covariance P to A P A.T on the centre and velocity blocks only."""
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        covariance = _dense_covariance(dim)
+        tracklet.state_estimator.kf.state_covariance = covariance.copy()
+        affine: np.ndarray = np.hstack([np.array(linear), np.array(shift)[:, np.newaxis]]).astype(dtype)
+        rot = affine[:, :2].astype(np.float64)
+        oracle = np.eye(dim)
+        oracle[0:2, 0:2] = rot
+        oracle[4:6, 4:6] = rot
+
+        CMC.apply_batch(affine, [tracklet])
+
+        np.testing.assert_allclose(
+            tracklet.state_estimator.kf.state_covariance, oracle @ covariance @ oracle.T, rtol=1e-12
+        )
+
+    @pytest.mark.parametrize(("estimator_class", "dim"), _CENTRE_ESTIMATORS)
+    def test_pure_translation_keeps_covariance_bit_identical(
+        self, estimator_class: type[BaseStateEstimator], dim: int
+    ) -> None:
+        """A transform with an identity linear part moves the state but cannot change its uncertainty."""
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        covariance = _dense_covariance(dim)
+        tracklet.state_estimator.kf.state_covariance = covariance.copy()
+
+        CMC.apply_batch(np.array([[1.0, 0.0, 12.0], [0.0, 1.0, -9.0]]), [tracklet])
+
+        np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, covariance)
+
+    @pytest.mark.parametrize(
+        ("estimator_class", "state", "expected"),
+        [
+            pytest.param(
+                XCYCWHStateEstimator,
+                [10.0, 20.0, 4.0, 6.0, 1.0, 2.0, 0.1, 0.2],
+                [-35.0, 27.0, 4.0, 6.0, -4.0, 2.0, 0.1, 0.2],
+                id="xcycwh",
+            ),
+            pytest.param(
+                XCYCSRStateEstimator,
+                [10.0, 20.0, 24.0, 0.5, 1.0, 2.0, 0.3],
+                [-35.0, 27.0, 24.0, 0.5, -4.0, 2.0, 0.3],
+                id="xcycsr",
+            ),
+        ],
+    )
+    def test_state_under_rotation_and_zoom_matches_hand_computed_values(
+        self, estimator_class: type[BaseStateEstimator], state: list[float], expected: list[float]
+    ) -> None:
+        """Rotation by 90 degrees with 2x zoom plus (5, 7): centre (10, 20) -> (-35, 27), velocity (1, 2) -> (-4, 2).
+
+        The translation reaches the position only (never the velocity), and width / height / scale / ratio and their
+        velocities keep their values.
+        """
+        tracklet = BoTSORTTracklet(np.array([10.0, 20.0, 50.0, 80.0]), state_estimator_class=estimator_class)
+        tracklet.state_estimator.kf.state = np.array(state).reshape(-1, 1)
+        affine = np.array([[0.0, -2.0, 5.0], [2.0, 0.0, 7.0]])
+
+        CMC.apply_batch(affine, [tracklet])
+
+        np.testing.assert_allclose(tracklet.state_estimator.kf.state.ravel(), expected, atol=1e-12)
 
 
 @pytest.mark.parametrize(

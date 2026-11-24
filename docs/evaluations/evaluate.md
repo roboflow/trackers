@@ -66,9 +66,9 @@ trackers eval \
 **Output:**
 
 ```
-                                MOTA    HOTA    IDF1
+Sequence                        MOTA    HOTA    IDF1
 ----------------------------------------------------
-gt                            30.192  35.475  38.515
+MOT17-02-FRCNN                30.192  35.475  38.515
 ```
 
 ---
@@ -178,6 +178,11 @@ All arguments accepted by `trackers eval`.
       <td><code>--threshold</code></td>
       <td>IoU threshold for CLEAR and Identity matching. HOTA evaluates across multiple thresholds internally.</td>
       <td><code>0.5</code></td>
+    </tr>
+    <tr>
+      <td><code>--class_config</code></td>
+      <td>MOT ground-truth class handling. Presets: <code>mot17</code> and <code>mot20</code> (MOT20 adds class 6 as a distractor). Preset names are lowercase only (<code>mot20</code>, not <code>MOT20</code>). Also accepts an inline JSON object, e.g. <code>--class_config '{"distractor_classes": [2, 6, 7, 8, 12]}'</code>.</td>
+      <td><code>mot17</code></td>
     </tr>
     <tr>
       <td><code>--columns</code></td>

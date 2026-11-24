@@ -157,9 +157,7 @@ class ByteTrackTracker(BaseTracker):
             return self._detections_for_skipped_update(detections)
 
         if len(self.tracks) == 0 and len(detections) == 0:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
@@ -240,9 +238,7 @@ class ByteTrackTracker(BaseTracker):
 
         # Build final sv.Detections from original by indexing
         if not out_det_indices:
-            result = sv.Detections.empty()
-            result.tracker_id = np.array([], dtype=int)
-            return result
+            return self._empty_result(detections)
 
         idx = np.array(out_det_indices)
         result = detections[idx]

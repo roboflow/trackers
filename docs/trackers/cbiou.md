@@ -49,6 +49,8 @@ C-BIoU keeps the [ByteTrack](bytetrack.md)-style association pipeline used in [B
 | `buffer_ratio_first`                      | Paper **b1**, small BIoU buffer for the first association pass.       | Typical range 0.1-0.7. Should be **less than** `buffer_ratio_second`.                                                                                                                                                                              |
 | `buffer_ratio_second`                     | Paper **b2**, large BIoU buffer for the second association pass.      | Typical range 0.2-1.0. Should be **greater than** `buffer_ratio_first`.                                                                                                                                                                            |
 
+<a id="buffer-ordering"></a>
+
 !!! warning "Buffer ordering (b1 < b2)"
 
     Always set `buffer_ratio_first` < `buffer_ratio_second`. The cascaded matcher applies the **smaller** buffer first, then the **larger** buffer only on pairs that remain unmatched. Reversing the order (b1 ≥ b2) is not consistent with the paper and usually hurts performance.

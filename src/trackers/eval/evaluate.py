@@ -7,12 +7,21 @@
 from __future__ import annotations
 
 import logging
+import os
+import warnings
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal
 
 from trackers.eval.clear import aggregate_clear_metrics, compute_clear_metrics
 from trackers.eval.hota import aggregate_hota_metrics, compute_hota_metrics
 from trackers.eval.identity import aggregate_identity_metrics, compute_identity_metrics
+from trackers.eval.mot_classes import (
+    MOT_CLASS_PRESETS,
+    MOTClassConfig,
+    MOTClassPreset,
+    resolve_mot_class_config,
+)
 from trackers.eval.results import (
     BenchmarkResult,
     CLEARMetrics,
@@ -26,12 +35,16 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 
+#: Sequence-name prefix of the MOT20 benchmark, whose ground truth needs the `mot20` class preset.
+_MOT20_SEQUENCE_PREFIX = "MOT20-"
+
 
 def evaluate_mot_sequence(
     gt_path: str | Path,
     tracker_path: str | Path,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
+    class_config: MOTClassPreset | MOTClassConfig = "mot17",
 ) -> SequenceResult:
     """Evaluate a single multi-object tracking result against ground truth. Computes
     standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) for one sequence
@@ -51,20 +64,24 @@ def evaluate_mot_sequence(
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity` matching. Defaults
             to `0.5`. `HOTA` evaluates across multiple thresholds internally.
+        class_config: MOT class preset ("mot17", "mot20") or custom `MOTClassConfig`.
+            Defaults to "mot17".
 
     Returns:
         `SequenceResult` with `CLEAR`, `HOTA`, and/or `Identity` populated based
-            on `metrics`.
+            on `metrics`. Its `sequence` is named after `<seq>` for the MOT layout `<seq>/gt/gt.txt`,
+            otherwise after the ground-truth file stem.
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
-        ValueError: If an unsupported metric family is requested.
+        ValueError: If an unsupported metric family is requested, or if `class_config` is neither a supported
+            preset name nor a `MOTClassConfig`.
 
     Examples:
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
         >>>
         >>> result = evaluate_mot_sequence(  # doctest: +SKIP
-        ...     gt_path="data/gt/MOT17-02/gt.txt",
+        ...     gt_path="data/MOT17-02/gt/gt.txt",
         ...     tracker_path="data/trackers/MOT17-02.txt",
         ...     metrics=["CLEAR", "HOTA", "Identity"],
         ... )
@@ -77,23 +94,77 @@ def evaluate_mot_sequence(
         --------------------------------------
         MOT17-02  75.600  62.300  72.100    42
     """
-    if metrics is None:
-        metrics = ["CLEAR"]
-
-    # Validate metrics
-    for metric in metrics:
-        if metric not in SUPPORTED_METRICS:
-            raise ValueError(f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}")
+    validated_metrics = _validate_metrics(metrics)
+    resolved_class_config = resolve_mot_class_config(class_config)
 
     gt_path = Path(gt_path)
     tracker_path = Path(tracker_path)
 
+    seq_name = _sequence_name_from_gt_path(gt_path)
+    _warn_if_mot20_sequences_use_mot17_config([seq_name], resolved_class_config)
+
+    return _evaluate_mot_sequence_resolved(
+        gt_path=gt_path,
+        tracker_path=tracker_path,
+        sequence=seq_name,
+        metrics=validated_metrics,
+        threshold=threshold,
+        class_config=resolved_class_config,
+    )
+
+
+def _sequence_name_from_gt_path(gt_path: Path) -> str:
+    """Name the sequence that a ground-truth file belongs to.
+
+    MOT layout stores ground truth as `<seq>/gt/gt.txt`, so those files are named after `<seq>`. Any other file,
+    including a flat `<name>.txt` or a bare `gt.txt`, keeps its file stem. The path is normalized lexically, so a
+    relative `gt/gt.txt` or `../gt/gt.txt` resolves against the working directory without following symlinks.
+
+    Args:
+        gt_path: Path to the ground-truth MOT file.
+
+    Returns:
+        The sequence directory name for `<seq>/gt/gt.txt`, otherwise the file stem.
+    """
+    normalized = Path(os.path.abspath(gt_path))
+    if normalized.name == "gt.txt" and normalized.parent.name == "gt" and normalized.parent.parent.name:
+        return normalized.parent.parent.name
+    return gt_path.stem
+
+
+def _evaluate_mot_sequence_resolved(
+    gt_path: Path,
+    tracker_path: Path,
+    sequence: str,
+    metrics: list[str],
+    threshold: float,
+    class_config: MOTClassConfig,
+) -> SequenceResult:
+    """Compute the requested metrics for one sequence from already-validated inputs.
+
+    Shared by `evaluate_mot_sequence` and `evaluate_mot_sequences`, which validate `metrics`, resolve `class_config`
+    and emit the MOT20 warning themselves, so this worker never warns.
+
+    Args:
+        gt_path: Path to the ground-truth MOT file.
+        tracker_path: Path to the tracker MOT file.
+        sequence: Sequence name to report in the result.
+        metrics: Validated metric families to compute.
+        threshold: IoU threshold for `CLEAR` and `Identity` matching.
+        class_config: Resolved MOT class configuration.
+
+    Returns:
+        `SequenceResult` named `sequence`.
+
+    Raises:
+        FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
+    """
     # Load data
     gt_data = load_mot_file(gt_path)
     tracker_data = load_mot_file(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
-    seq_data = _prepare_mot_sequence(gt_data, tracker_data)
+    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config)
 
     # Compute metrics
     clear_metrics: CLEARMetrics | None = None
@@ -128,7 +199,7 @@ def evaluate_mot_sequence(
 
     # Build result
     return SequenceResult(
-        sequence=gt_path.stem,
+        sequence=sequence,
         CLEAR=clear_metrics,
         HOTA=hota_metrics,
         Identity=identity_metrics,
@@ -141,6 +212,7 @@ def evaluate_mot_sequences(
     seqmap: str | Path | None = None,
     metrics: list[str] | None = None,
     threshold: float = 0.5,
+    class_config: MOTClassPreset | MOTClassConfig = "mot17",
 ) -> BenchmarkResult:
     """Evaluate multiple multi-object tracking results against ground truth. Computes
     standard multi-object tracking metrics (CLEAR MOT, HOTA, Identity) across one or
@@ -202,13 +274,16 @@ def evaluate_mot_sequences(
         metrics: Metric families to compute. Supported values are
             `["CLEAR", "HOTA", "Identity"]`. Defaults to `["CLEAR"]`.
         threshold: IoU threshold for `CLEAR` and `Identity`. Defaults to `0.5`.
+        class_config: MOT class preset ("mot17", "mot20") or custom `MOTClassConfig`.
+            Defaults to "mot17".
 
     Returns:
         `BenchmarkResult` with per-sequence results and a `COMBINED` aggregate.
 
     Raises:
         FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
-        ValueError: If no sequences are found.
+        ValueError: If no sequences are found, if an unsupported metric family is requested, or if `class_config`
+            is neither a supported preset name nor a `MOTClassConfig`.
 
     Examples:
         Auto-detect layout and evaluate all sequences:
@@ -229,8 +304,8 @@ def evaluate_mot_sequences(
         ---------------------------------------
         COMBINED   75.450  62.050  71.850    82
     """
-    if metrics is None:
-        metrics = ["CLEAR"]
+    validated_metrics = _validate_metrics(metrics)
+    resolved_class_config = resolve_mot_class_config(class_config)
 
     gt_dir = Path(gt_dir)
     tracker_dir = Path(tracker_dir)
@@ -253,6 +328,8 @@ def evaluate_mot_sequences(
     if not sequences:
         raise ValueError(f"No sequences found in {gt_dir}")
 
+    _warn_if_mot20_sequences_use_mot17_config(sequences, resolved_class_config)
+
     logger.info("Evaluating %d sequences...", len(sequences))
 
     # Evaluate each sequence
@@ -271,26 +348,69 @@ def evaluate_mot_sequences(
         if not tracker_path.exists():
             raise FileNotFoundError(f"Tracker file not found: {tracker_path}")
 
-        seq_result = evaluate_mot_sequence(
+        sequence_results[seq_name] = _evaluate_mot_sequence_resolved(
             gt_path=gt_path,
             tracker_path=tracker_path,
-            metrics=metrics,
-            threshold=threshold,
-        )
-        # Fix sequence name (evaluate_mot_sequence uses file stem)
-        sequence_results[seq_name] = SequenceResult(
             sequence=seq_name,
-            CLEAR=seq_result.CLEAR,
-            HOTA=seq_result.HOTA,
-            Identity=seq_result.Identity,
+            metrics=validated_metrics,
+            threshold=threshold,
+            class_config=resolved_class_config,
         )
 
     # Compute aggregate metrics
-    aggregate = _aggregate_metrics(sequence_results, metrics)
+    aggregate = _aggregate_metrics(sequence_results, validated_metrics)
 
     return BenchmarkResult(
         sequences=sequence_results,
         aggregate=aggregate,
+    )
+
+
+def _validate_metrics(metrics: list[str] | None) -> list[str]:
+    """Apply the default metric family and reject unsupported ones before any file is read.
+
+    Args:
+        metrics: Requested metric families, or `None` for the default `["CLEAR"]`.
+
+    Returns:
+        The requested metric families, or `["CLEAR"]` when none were given.
+
+    Raises:
+        ValueError: If a requested metric family is not in `SUPPORTED_METRICS`.
+    """
+    if metrics is None:
+        return ["CLEAR"]
+    for metric in metrics:
+        if metric not in SUPPORTED_METRICS:
+            raise ValueError(f"Unsupported metric: {metric}. Supported metrics: {SUPPORTED_METRICS}")
+    return metrics
+
+
+def _warn_if_mot20_sequences_use_mot17_config(sequence_names: Iterable[str], class_config: MOTClassConfig) -> None:
+    """Emit one warning when MOT20 sequences are about to be scored with the MOT17 class preset.
+
+    Only the built-in `mot17` preset object triggers the warning (however the preset name was spelled); an explicit
+    `MOTClassConfig` is treated as a deliberate choice and stays silent. All matching sequences are named in a single
+    warning, so evaluating a whole benchmark warns once rather than once per sequence.
+
+    Args:
+        sequence_names: Names of the sequences about to be evaluated.
+        class_config: Resolved MOT class configuration.
+    """
+    if class_config is not MOT_CLASS_PRESETS["mot17"]:
+        return
+    mot20_names = [name for name in sequence_names if name.startswith(_MOT20_SEQUENCE_PREFIX)]
+    if not mot20_names:
+        return
+    quoted_names = ", ".join(f"'{name}'" for name in mot20_names)
+    subject = f"Sequence {quoted_names} matches" if len(mot20_names) == 1 else f"Sequences {quoted_names} match"
+    warnings.warn(
+        f"{subject} MOT20 pattern, but MOT17 class configuration is selected. "
+        "To treat non_mot_vehicle (class 6) as a distractor, pass class_config='mot20' in Python or run "
+        "'trackers eval --class_config mot20'; 'trackers tune' does not support class_config yet.",
+        UserWarning,
+        # 1 = this helper, 2 = the public evaluator, 3 = the user's call site.
+        stacklevel=3,
     )
 
 
@@ -304,12 +424,14 @@ def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
         "flat" if .txt files exist in gt_dir, "mot" if sequence
         subdirectories with gt/gt.txt exist.
     """
-    # Check for flat format (*.txt files directly in gt_dir)
-    txt_files = list(gt_dir.glob("*.txt"))
+    # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
+    # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
+    txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
     if txt_files:
         return "flat"
 
-    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir)
+    # Check for MOT format (*/gt/gt.txt pattern - sequences directly in gt_dir). Hidden sequence
+    # directories still count here: a `seqmap` may list them explicitly.
     mot_files = list(gt_dir.glob("*/gt/gt.txt"))
     if mot_files:
         return "mot"
@@ -329,13 +451,18 @@ def _discover_sequences(
         data_format: Directory format.
 
     Returns:
-        List of sequence names.
+        List of sequence names. Hidden entries (names starting with `.`, e.g. a
+            `.MOT17-02-backup` copy) are skipped in both layouts.
     """
     if data_format == "flat":
         return sorted(p.stem for p in gt_dir.glob("*.txt") if not p.name.startswith("."))
     else:
-        # MOT format: gt_dir/{seq}/gt/gt.txt
-        return sorted(p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.name.startswith("."))
+        # MOT format: gt_dir/{seq}/gt/gt.txt — the sequence name is the grandparent directory,
+        # so the hidden-entry check has to look at that name rather than at `p.name`, which is
+        # always "gt.txt".
+        return sorted(
+            p.parent.parent.name for p in gt_dir.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")
+        )
 
 
 def _get_paths(

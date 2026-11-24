@@ -16,6 +16,8 @@ For comparisons with other trackers, plus dataset context and evaluation details
 
 <!-- BENCH-XREF copy-of: [docs/evaluations/results.md](../evaluations/results.md) OC-SORT row in mot17-default/sportsmot-default/soccernet-default tables. Also duplicated in [docs/index.md](../index.md) (L13 headline + Algorithms table), and [README.md](../../README.md) (Algorithms table). No DanceTrack row here by design. Update results.md first, then mirror here. -->
 
+Default OC-SORT results on the test split (CMC off):
+
 |  Dataset  | HOTA | IDF1 | MOTA |
 | :-------: | :--: | :--: | :--: |
 |   MOT17   | 61.9 | 76.4 | 76.0 |
@@ -40,6 +42,17 @@ OC-SORT extends [SORT](sort.md) with three observation-centric mechanisms that a
 
 Together, these three mechanisms make OC-SORT effective for group dancing, sports, and other scenarios where objects follow non-linear paths, stop and restart, or are occluded in dense groups.
 
+**Camera motion compensation (optional).** All three mechanisms compare boxes across frames, so a moving camera shows up as object motion: the Kalman prediction lands where the object would be under a static camera, and ORU replays the pan as a trajectory. With `enable_cmc=True`, OC-SORT estimates the global motion between consecutive frames and warps every track into the current frame before association — the Kalman state, the stored observations used by OCM and OCR, and the frozen state ORU restores. It uses the same `CMC` module as [BoT-SORT](botsort.md) and needs the frame passed to `update()`:
+
+```python
+tracker = OCSORTTracker(enable_cmc=True)
+detections = tracker.update(detections, frame=frame_bgr)
+```
+
+CMC is off by default, which keeps the original OC-SORT and its frame-free throughput. Turn it on for handheld, panning, or broadcast footage, and leave it off for static cameras: when moving objects fill most of the frame, the motion estimate picks some of them up as camera motion.
+
+Contributor-reported validation-split runs (YOLOX detections) show gains from CMC on MOT17 and SportsMOT and a slight loss on DanceTrack. These runs are not part of the [tracker comparison](../evaluations/results.md) and have not been independently reproduced; see [PR #611](https://github.com/roboflow/trackers/pull/611) for details.
+
 ## Key Parameters
 
 | Parameter                      | Purpose                                                                                                                                                                                                                                                                                                                                                                                                      | Tuning guidance                                                                                                                    |
@@ -50,10 +63,13 @@ Together, these three mechanisms make OC-SORT effective for group dancing, sport
 | `direction_consistency_weight` | Strength of the OCM direction-consistency penalty in the primary association cost.                                                                                                                                                                                                                                                                                                                           | 0.1-0.3 typical. Higher enforces stricter directional consistency, useful in crowded scenes.                                       |
 | `high_conf_det_threshold`      | Minimum detection confidence used for association. Detections below this threshold are still returned (`tracker_id=-1`), just never associated or used to spawn a track — OC-SORT has no ByteTrack-style low-confidence recovery stage. Users who don't want these rows returned can pre-filter before `update()` — e.g. `detections[detections.confidence >= t]` — when detections carry confidence scores. | 0.5-0.7 typical. Lower values include more detections in association; higher values keep association to more confident detections. |
 | `delta_t`                      | Frame lookback used to compute each track's velocity, feeding the OCM direction-consistency term.                                                                                                                                                                                                                                                                                                            | 1-3 typical. Larger values smooth velocity estimate over more frames.                                                              |
+| `enable_cmc`                   | Compensate camera motion before association. Requires passing `frame` to `update()`.                                                                                                                                                                                                                                                                                                                         | `False` by default. Enable for moving cameras; leave off for static ones to skip the per-frame motion estimate.                    |
+| `cmc_method`                   | Camera motion estimator: `"sparseOptFlow"`, `"orb"`, `"sift"`, or `"ecc"`.                                                                                                                                                                                                                                                                                                                                   | `"sparseOptFlow"` is fast and robust for most footage.                                                                             |
+| `cmc_downscale`                | Integer downscale factor applied to frames before estimating motion.                                                                                                                                                                                                                                                                                                                                         | Higher is faster but less precise. 2 by default.                                                                                   |
 
-!!! warning "Frame input is ignored by OC-SORT"
+!!! warning "Frames are only used with camera motion compensation"
 
-    `OCSORTTracker.update()` accepts `frame` for API consistency with other trackers, but OC-SORT does not use image/frame pixels. If you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
+    `OCSORTTracker.update()` uses `frame` only when `enable_cmc=True`. Otherwise OC-SORT does not look at image pixels: if you pass `frame` with a non-`None` value, the tracker emits a `UserWarning` and ignores it.
 
 ## Run on video, webcam, or RTSP stream
 

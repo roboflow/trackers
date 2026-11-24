@@ -63,6 +63,7 @@ extra_javascript:
   - javascripts/mathjax.js
   - javascripts/cli_builder_framework.js
   - javascripts/command_builder.js
+  - javascripts/grouped_tables.js
 
 markdown_extensions:
    # Adds support for card grids
@@ -138,6 +139,7 @@ plugins:
   - mkdocstrings:
       handlers:
         python:
+          paths: [src]
           options:
             # Controls whether to show symbol types in the table of contents
             show_symbol_type_toc: true
@@ -170,6 +172,7 @@ nav:
     - Tune Trackers: guides/tune.md
     - IoU Variants: guides/iou.md
     - State Estimators: guides/state-estimators.md
+    - ReID Appearance: guides/reid.md
   - Developer:
     - Inspect Mask Pipeline: guides/inspect.md
   - Evaluations:
@@ -188,6 +191,7 @@ nav:
   - API Reference:
     - Trackers: api/trackers.md
     - Motion: api/motion.md
+    - ReID: api/reid.md
     - Datasets: api/datasets.md
     - Evals: api/evals.md
     - I/O: api/io.md

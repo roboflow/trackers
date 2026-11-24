@@ -1,7 +1,7 @@
 ---
 title: Object Tracking in Python
 comments: false
-description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, BoT-SORT, C-BIoU, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
+description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-SORT, C-BIoU, BoT-SORT, and McByte, run your first tracking pipeline, and evaluate results with HOTA, IDF1, and MOTA metrics.
 ---
 
 <div align="center">
@@ -14,7 +14,7 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 Roboflow Trackers achieves 64.1 HOTA on MOT17 with McByte, benchmarked across four standard datasets, with ByteTrack and OC-SORT as zero-extra-dependency defaults. Apache 2.0, Python 3.10+.
 
-Current release: v2.6.0 — see the [changelog](changelog.md) for release history.
+Current release: v2.7.0 — see the [changelog](changelog.md) for release history.
 
 <video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="assets/track-objects-page-poster.webp" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
@@ -121,20 +121,23 @@ For the full evaluation workflow, see the [evaluation guide](evaluations/evaluat
 
 Clean, modular implementations of leading trackers. All HOTA scores use default parameters.
 
-<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/BoT-SORT/C-BIoU/McByte rows. Also duplicated in [README.md](../README.md)'s Algorithms table. Update results.md first, then mirror both copies. -->
+<!-- BENCH-XREF copy-of: [docs/evaluations/results.md](evaluations/results.md) mot17/sportsmot/soccernet/dancetrack-default tables, HOTA column only, SORT/ByteTrack/OC-SORT/C-BIoU/BoT-SORT/BoT-SORT + ReID/McByte rows; the BoT-SORT + ReID footnote also copies the Tuned ReID HOTA of all four Tuned tables. Also duplicated in [README.md](../README.md)'s Algorithms table. Update results.md first, then mirror both copies. -->
 
-|                   Algorithm                   |                               Description                               | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
-| :-------------------------------------------: | :---------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
-|   [SORT](https://arxiv.org/abs/1602.00763)    |              Kalman filter + Hungarian matching baseline.               |    58.4    |      70.8      |      81.6      |      47.2       |
-| [ByteTrack](https://arxiv.org/abs/2110.06864) |     Two-stage association using high and low confidence detections.     |    60.1    |      73.0      |      84.0      |      53.3       |
-|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |              Observation-centric recovery for lost tracks.              |    61.9    |      71.7      |      78.4      |      54.1       |
-| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                       Camera motion compensation.                       |    63.7    |      73.8      |      84.5      |      57.8       |
-|  [C-BIoU](https://arxiv.org/abs/2211.14317)   |      Cascaded buffered IoU matching for fast or irregular motion.       |    63.0    |      73.1      |      82.6      |      56.7       |
-|         [McByte](trackers/mcbyte.md)          | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
+|                   Algorithm                   |                                Description                                | MOT17 HOTA | SportsMOT HOTA | SoccerNet HOTA | DanceTrack HOTA |
+| :-------------------------------------------: | :-----------------------------------------------------------------------: | :--------: | :------------: | :------------: | :-------------: |
+|   [SORT](https://arxiv.org/abs/1602.00763)    |               Kalman filter + Hungarian matching baseline.                |    58.4    |      70.8      |      81.6      |      47.2       |
+| [ByteTrack](https://arxiv.org/abs/2110.06864) |      Two-stage association using high and low confidence detections.      |    60.1    |      73.0      |      84.0      |      53.3       |
+|  [OC-SORT](https://arxiv.org/abs/2203.14360)  |               Observation-centric recovery for lost tracks.               |    61.9    |      71.7      |      78.4      |      54.1       |
+|  [C-BIoU](https://arxiv.org/abs/2211.14317)   |       Cascaded buffered IoU matching for fast or irregular motion.        |    63.0    |      73.1      |      82.6      |      56.7       |
+| [BoT-SORT](https://arxiv.org/abs/2206.14651)  |                        Camera motion compensation.                        |    63.7    |      73.8      |      84.5      |      57.8       |
+|       [BoT-SORT + ReID](guides/reid.md)       |    Appearance embeddings fused with motion, for harder association.\*     |    63.9    |      75.5      |      84.3      |      57.0       |
+|         [McByte](trackers/mcbyte.md)          | Mask-conditioned tracking — adds propagated SAM/Cutie masks as a cue.\*\* |  **64.1**  |    **76.5**    |    **85.0**    |    **67.2**     |
 
 !!! note
 
-    \*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above — see the [McByte docs](trackers/mcbyte.md) for setup.
+    \*BoT-SORT + ReID is listed with library default parameters and the default encoder `fastreid_mot17_sbs50` (BoT-SORT's own ReID model, trained on MOT17) on all four datasets. At its best tuned configuration on each dataset, it reaches 64.6 (MOT17), 77.8 (SportsMOT), 88.4 (SoccerNet) and 60.8 (DanceTrack) HOTA on the test sets, above BoT-SORT without ReID on all four. See the [ReID guide](guides/reid.md).
+
+    \*\*McByte needs optional heavyweight deps (`torch`, SAM, Cutie) not installed by default. It tops HOTA on all four benchmarks above. See the [McByte docs](trackers/mcbyte.md) for setup.
 
 For detailed benchmarks and tuned configurations, see the [tracker comparison](evaluations/results.md).
 
@@ -198,6 +201,36 @@ Try trackers in your browser with our [Hugging Face Playground](https://huggingf
     End-to-end example showing how to run RF-DETR detection with the OC-SORT tracker.
 
     [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow-ai/notebooks/blob/main/notebooks/how-to-track-objects-with-ocsort-tracker.ipynb)
+
+- **How to Track Objects with McByte**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb"><img src="assets/tutorials/mcbyte-sample.webp" alt="McByte tracker tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how to run RF-DETR detection with the McByte tracker and its SAM and Cutie masks.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-objects-with-mcbyte-tracker.ipynb)
+
+- **How to Track Objects on a Moving Camera with BoT-SORT**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb"><img src="assets/tutorials/cmc-sample.webp" alt="BoT-SORT camera motion compensation tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how BoT-SORT's camera motion compensation keeps IDs steady when the camera moves.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-track-a-moving-camera-with-botsort.ipynb)
+
+- **How to Track Objects with BoT-SORT and Re-ID**
+
+    ---
+
+    <a href="https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb"><img src="assets/tutorials/reid-sample.webp" alt="BoT-SORT Re-ID tutorial preview" width="1280" height="720" loading="lazy" decoding="async"></a>
+
+    End-to-end example showing how BoT-SORT with Re-ID keeps football players' IDs when they leave the frame and come back.
+
+    [:simple-googlecolab: Run Google Colab](https://colab.research.google.com/github/roboflow/trackers/blob/develop/docs/cookbooks/how-to-add-reid-to-trackers.ipynb)
 
 - **How to Tune Tracker Hyperparameters**
 
