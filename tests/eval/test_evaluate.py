@@ -354,7 +354,7 @@ class TestEvaluateMOTSequencesDiscovery:
 
 
 class TestTableColumns:
-    """`table(columns=...)` reports a column it has no value for instead of printing it as a score of zero."""
+    """Tables warn about unavailable columns while preserving computed output."""
 
     @pytest.fixture
     def benchmark_dirs(self, tmp_path: Path) -> tuple[Path, Path]:
@@ -368,30 +368,33 @@ class TestTableColumns:
         return gt_dir, tracker_dir
 
     @pytest.mark.parametrize(
-        ("metrics", "column"),
+        ("columns", "missing"),
         [
-            pytest.param(["CLEAR"], "HOTA", id="hota-not-computed"),
-            pytest.param(["CLEAR"], "IDF1", id="identity-not-computed"),
-            pytest.param(["HOTA"], "MOTA", id="clear-not-computed"),
-            pytest.param(["CLEAR", "HOTA", "Identity"], "MOTa", id="unknown-name"),
+            pytest.param(["MOTA", "HOTA"], "HOTA", id="uncomputed-family"),
+            pytest.param(["MOTA", "IDSw"], "IDSw", id="misspelled"),
+            pytest.param(["MOTA", "HOTA", "IDSw"], "HOTA, IDSw", id="multiple-invalid"),
         ],
     )
-    def test_sequence_table_rejects_column_without_value(
-        self, sample_mot_files: tuple[Path, Path], metrics: list[str], column: str
+    def test_sequence_table_warns_and_keeps_valid_columns(
+        self, sample_mot_files: tuple[Path, Path], columns: list[str], missing: str
     ) -> None:
-        """A column outside the computed families raises and names that column."""
-        gt_path, tracker_path = sample_mot_files
-        result = evaluate_mot_sequence(gt_path, tracker_path, metrics=metrics)
+        """Unavailable columns are named together while computed values remain visible."""
+        result = evaluate_mot_sequence(*sample_mot_files, metrics=["CLEAR"])
 
-        with pytest.raises(ValueError, match=rf"Column '{column}'.*metrics"):
-            result.table(columns=[column])
+        with pytest.warns(UserWarning, match=missing):
+            rows = result.table(columns=columns).splitlines()
 
-    def test_benchmark_table_rejects_column_without_value(self, benchmark_dirs: tuple[Path, Path]) -> None:
-        """The benchmark table applies the same check as the sequence table."""
+        assert rows[0].split() == ["Sequence", "MOTA"]
+        assert rows[-1].split()[-1] == "100.000"
+
+    def test_benchmark_table_falls_back_when_all_columns_are_invalid(self, benchmark_dirs: tuple[Path, Path]) -> None:
+        """An entirely invalid selection falls back to the available default columns."""
         result = evaluate_mot_sequences(*benchmark_dirs, metrics=["CLEAR"])
 
-        with pytest.raises(ValueError, match=r"Column 'HOTA'.*metrics"):
-            result.table(columns=["MOTA", "HOTA"])
+        with pytest.warns(UserWarning, match="IDSw"):
+            table = result.table(columns=["IDSw"])
+
+        assert table == result.table()
 
     def test_table_keeps_real_values_for_computed_columns(self, benchmark_dirs: tuple[Path, Path]) -> None:
         """Columns from every requested family still render, including a genuine score."""
@@ -401,32 +404,31 @@ class TestTableColumns:
 
         assert rows[-1].split() == ["COMBINED", "100.000", "100.000", "100.000", "0"]
 
-    def test_cli_single_sequence_reports_error_and_writes_no_output(
-        self, sample_mot_files: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    @pytest.mark.parametrize("benchmark", [False, True])
+    def test_cli_saves_results_when_a_column_is_unavailable(
+        self,
+        sample_mot_files: tuple[Path, Path],
+        benchmark_dirs: tuple[Path, Path],
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        benchmark: bool,
     ) -> None:
-        """`trackers eval --columns` exits non-zero, prints no table, and saves no JSON."""
+        """Both CLI modes warn, render valid metrics, and save the computed JSON."""
+        output = tmp_path / "results.json"
         gt_path, tracker_path = sample_mot_files
-        output = tmp_path / "results.json"
-
-        exit_code = eval_command(gt=gt_path, predictions=tracker_path, columns=["MOTA", "HOTA"], output=output)
-
-        captured = capsys.readouterr()
-        assert exit_code == 1
-        assert captured.err.startswith("Error: Column 'HOTA'")
-        assert captured.out == ""
-        assert not output.exists()
-
-    def test_cli_benchmark_reports_error_and_writes_no_output(
-        self, benchmark_dirs: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Benchmark mode fails the same way as single-sequence mode."""
         gt_dir, tracker_dir = benchmark_dirs
-        output = tmp_path / "results.json"
-
-        exit_code = eval_command(gt_dir=gt_dir, predictions_dir=tracker_dir, columns=["MOTa"], output=output)
+        with pytest.warns(UserWarning, match="HOTA"):
+            exit_code = eval_command(
+                gt=None if benchmark else gt_path,
+                predictions=None if benchmark else tracker_path,
+                gt_dir=gt_dir if benchmark else None,
+                predictions_dir=tracker_dir if benchmark else None,
+                columns=["MOTA", "HOTA"],
+                output=output,
+            )
 
         captured = capsys.readouterr()
-        assert exit_code == 1
-        assert "Error: Column 'MOTa'" in captured.err
-        assert "COMBINED" not in captured.out
-        assert not output.exists()
+        assert exit_code == 0
+        assert "MOTA" in captured.out
+        assert "HOTA" not in captured.out
+        assert output.exists()
