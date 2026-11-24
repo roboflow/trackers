@@ -889,19 +889,19 @@ def _warp_kalman_states(
         # invalid geometry. Transform all four corners, then rebuild the
         # enclosing axis-aligned box with per-axis min/max.
         # Velocities have no ordering of their own (a shrinking box has vx1 > vx2),
-        # so they are not sorted: each new edge takes the velocity of the corner it
-        # came from. Corners are (x1, y1), (x2, y1), (x2, y2), (x1, y2), as slots.
-        corner_slots = np.array([[0, 1], [2, 1], [2, 3], [0, 3]])
-        position_corners = states[:, corner_slots] @ rot_mtx.T
-        velocity_corners = states[:, corner_slots + 4] @ rot_mtx.T
-        low_corner = position_corners.argmin(axis=1)[:, np.newaxis]
-        # Search from (x2, y2) so that a zero-size box still pairs each edge with its own velocity.
-        high_corner = (np.roll(position_corners, -2, axis=1).argmax(axis=1)[:, np.newaxis] + 2) % 4
+        # so each edge takes the velocity of its source corner. Select each input
+        # coordinate by transform sign and box ordering, including tied positions:
+        # a reflected zero-width edge must use the opposite corner's velocity.
+        second_is_low = (states[:, 2:4] < states[:, 0:2])[:, np.newaxis, :] ^ (rot_mtx < 0)[np.newaxis, :, :]
+        first_velocity = states[:, np.newaxis, 4:6]
+        second_velocity = states[:, np.newaxis, 6:8]
+        low_velocity = (np.where(second_is_low, second_velocity, first_velocity) * rot_mtx).sum(axis=2)
+        high_velocity = (np.where(second_is_low, first_velocity, second_velocity) * rot_mtx).sum(axis=2)
         states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
             states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
         )
-        states[:, 4:6] = np.take_along_axis(velocity_corners, low_corner, axis=1)[:, 0]
-        states[:, 6:8] = np.take_along_axis(velocity_corners, high_corner, axis=1)[:, 0]
+        states[:, 4:6] = low_velocity
+        states[:, 6:8] = high_velocity
     else:
         # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
         states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation

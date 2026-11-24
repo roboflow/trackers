@@ -672,6 +672,30 @@ class TestXYXYVelocityWarp:
         np.testing.assert_array_equal(tracklet.state_estimator.kf.state[4:8, 0], self.SHRINKING)
 
     @pytest.mark.parametrize(
+        ("box", "velocity", "linear"),
+        [
+            pytest.param([0, 0, 0, 10], [-1, 0, 1, 0], [[-1, 0], [0, 1]], id="reflect-zero-width"),
+            pytest.param([0, 0, 10, 0], [0, -1, 0, 1], [[1, 0], [0, -1]], id="reflect-zero-height"),
+            pytest.param([0, 0, 10, 0], [0, -1, 0, 1], [[0, -1], [1, 0]], id="rotate-zero-height"),
+        ],
+    )
+    def test_degenerate_expanding_box_follows_transformed_edges(
+        self, box: list[int], velocity: list[int], linear: list[list[int]]
+    ) -> None:
+        """Tied position edges follow the transformed direction when a box expands."""
+        box_array = np.array(box, dtype=float)
+        rotation = np.array(linear, dtype=float)
+        tracklet = _xyxy_tracklet(box_array)
+        tracklet.state_estimator.kf.state[4:8, 0] = velocity
+
+        CMC.apply_batch(np.column_stack((rotation, [0, 0])), [tracklet])
+
+        state = tracklet.state_estimator.kf.state.reshape(-1)
+        x1, y1, x2, y2 = box_array + velocity
+        moved = CMC.warp_xyxy_corners(x1, y1, x2, y2, rotation)
+        np.testing.assert_allclose(state[4:8], np.array(moved) - state[:4])
+
+    @pytest.mark.parametrize(
         "linear",
         [
             [[0.0, -1.0], [1.0, 0.0]],
