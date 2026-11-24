@@ -272,11 +272,11 @@ class TestTunerInit:
         assert tuner._sequences == ["seq1"]
 
     def test_hidden_detection_files_are_skipped(self, tmp_path: Path) -> None:
-        # `._seq1.txt` is macOS metadata; `.seq2.txt` has ground truth as well, so only its name rules it out.
+        """Skip hidden metadata and hidden sequences even when ground truth exists."""
         gt_dir, det_dir = _setup_dirs(tmp_path)
         (det_dir / "._seq1.txt").write_text(_MOT_LINE)
-        for d in (gt_dir, det_dir):
-            (d / ".seq2.txt").write_text(_MOT_LINE)
+        (gt_dir / ".seq2.txt").write_text(_MOT_LINE)
+        (det_dir / ".seq2.txt").write_text(_MOT_LINE)
         tuner = Tuner("bytetrack", gt_dir, det_dir)
         assert tuner._sequences == ["seq1"]
 
