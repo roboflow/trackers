@@ -122,6 +122,35 @@ class TestFuseBotsortReidAssociation:
 class TestBoTSORTTrackerReID:
     """Integration-style tests for BoT-SORT tracker appearance association."""
 
+    def test_positional_cmc_arguments_with_keyword_reid(self) -> None:
+        """Legacy calls ending at CMC options can add a Re-ID encoder by keyword."""
+        encoder = _KeyedReIDEncoder()
+        config = ReIDConfig(fusion="adaptive")
+        tracker = BoTSORTTracker(
+            30,
+            30.0,
+            0.7,
+            2,
+            0.2,
+            0.5,
+            0.3,
+            0.6,
+            False,
+            "sparseOptFlow",
+            2,
+            reid_model=encoder,
+            reid_config=config,
+        )
+
+        assert tracker.reid_model is encoder
+        assert tracker.reid_config is config
+        assert tracker.instant_first_frame_activation is True
+        tracker.update(_detection((10.0, 10.0, 50.0, 50.0)), frame=_frame())
+        assert encoder.calls > 0
+        assert len(tracker.tracks) == 1
+        bank = tracker.tracks[0].feature_bank
+        assert bank is not None and bank.feature is not None
+
     def test_rejects_config_without_encoder(self) -> None:
         with pytest.raises(ValueError, match="reid_config requires reid_model"):
             BoTSORTTracker(enable_cmc=False, reid_config=ReIDConfig())

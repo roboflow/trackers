@@ -14,7 +14,7 @@ description: Get started with Roboflow Trackers — install SORT, ByteTrack, OC-
 
 Roboflow Trackers achieves 64.1 HOTA on MOT17 with McByte, benchmarked across four standard datasets, with ByteTrack and OC-SORT as zero-extra-dependency defaults. Apache 2.0, Python 3.10+.
 
-Current release: v2.6.0 — see the [changelog](changelog.md) for release history.
+Current release: v2.7.0 — see the [changelog](changelog.md) for release history.
 
 <video width="100%" style="aspect-ratio: 16/9;" controls muted loop preload="none" poster="assets/track-objects-page-poster.webp" aria-label="Trackers object tracking demo">
   <source src="https://storage.googleapis.com/com-roboflow-marketing/trackers/docs/track-objects-page.mp4" type="video/mp4">
