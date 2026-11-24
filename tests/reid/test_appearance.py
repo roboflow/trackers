@@ -173,6 +173,17 @@ class TestExtractGroundTruthEmbeddings:
 
         np.testing.assert_array_equal(frame_ids, [1, 2])
 
+    def test_hidden_sequence_directories_are_skipped(self, tmp_path: Path) -> None:
+        # A hidden copy of a sequence (backup, sync or notebook artifact) is not a sequence.
+        rows = [(1, 1, 1, 1), (2, 1, 1, 1)]
+        _write_sequence(tmp_path, "seq_a", rows)
+        _write_sequence(tmp_path, ".seq_a-backup", rows)
+
+        embeddings, _, _, sequence_ids = extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
+
+        assert embeddings.shape == (2, 2)
+        np.testing.assert_array_equal(sequence_ids, [0, 0])
+
     def test_dataset_without_annotations_raises(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match=re.escape("gt/gt.txt")):
             extract_ground_truth_embeddings(_MeanIntensityEncoder(), tmp_path)
