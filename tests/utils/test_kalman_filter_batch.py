@@ -12,7 +12,11 @@ import copy
 
 import numpy as np
 import pytest
+import supervision as sv
 
+from trackers import ByteTrackTracker, SORTTracker
+from trackers.core.botsort.tracklet import BoTSORTTracklet
+from trackers.core.sort.tracklet import SORTTracklet
 from trackers.utils.kalman_filter import KalmanFilter
 from trackers.utils.state_representations import XYXYStateEstimator
 
@@ -83,6 +87,21 @@ def test_update_batch_can_skip_model_check() -> None:
         np.testing.assert_array_equal(batched.state_covariance, single.state_covariance)
 
 
+def test_filter_batch_preserves_filter_update_override() -> None:
+    """Direct batched filter updates invoke custom correction methods."""
+    calls: list[int] = []
+
+    class CountingFilter(KalmanFilter):
+        def update(self, z: np.ndarray | None) -> None:
+            calls.append(1)
+            super().update(z)
+
+    kf = CountingFilter(dim_x=8, dim_z=4)
+    KalmanFilter.update_batch([kf], [np.ones((4, 1))])
+
+    assert calls == [1]
+
+
 def test_estimator_update_batch_matches_individual_updates() -> None:
     """Estimator-level batching matches one `update` call per estimator."""
     boxes = [np.array([10.0, 20.0, 40.0, 80.0]) + i for i in range(3)]
@@ -146,3 +165,54 @@ def test_estimator_update_batch_falls_back_when_update_is_overridden() -> None:
     XYXYStateEstimator.update_batch(estimators, [box + 1.0 for box in boxes])
 
     assert len(calls) == len(estimators)
+
+
+@pytest.mark.parametrize(
+    "tracker_class", [pytest.param(SORTTracker, id="sort"), pytest.param(ByteTrackTracker, id="byte")]
+)
+def test_tracker_calls_custom_filter_update(tracker_class: type) -> None:
+    """Matched observations retain custom filter corrections in both tracker flows."""
+    calls: list[int] = []
+
+    class CountingFilter(KalmanFilter):
+        def update(self, z: np.ndarray | None) -> None:
+            calls.append(1)
+            super().update(z)
+
+    class CustomEstimator(XYXYStateEstimator):
+        def _create_filter(self, bbox: np.ndarray) -> KalmanFilter:
+            kf = super()._create_filter(bbox)
+            kf.__class__ = CountingFilter
+            return kf
+
+    tracker = tracker_class(state_estimator_class=CustomEstimator)
+    detections = sv.Detections(xyxy=np.array([[10.0, 20.0, 40.0, 80.0]]), confidence=np.array([0.9]))
+    tracker.update(detections)
+    tracker.update(detections)
+
+    assert calls == [1]
+
+
+def test_tracklet_batch_preserves_botsort_update() -> None:
+    """The inherited batch method performs BoT-SORT's observation bookkeeping."""
+    box = np.array([10.0, 20.0, 40.0, 80.0])
+    tracklet = BoTSORTTracklet(box)
+    BoTSORTTracklet.update_batch([tracklet], [box + 1])
+
+    assert tracklet.number_of_successful_updates == 2
+
+
+def test_tracklet_batch_preserves_sort_subclass_update() -> None:
+    """A SORT tracklet override keeps its own observation behavior."""
+    calls: list[int] = []
+
+    class CustomTracklet(SORTTracklet):
+        def update(self, bbox: np.ndarray) -> None:
+            calls.append(1)
+            super().update(bbox)
+
+    box = np.array([10.0, 20.0, 40.0, 80.0])
+    tracklet = CustomTracklet(box)
+    CustomTracklet.update_batch([tracklet], [box + 1])
+
+    assert calls == [1]

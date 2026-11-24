@@ -224,6 +224,10 @@ class BaseStateEstimator(ABC):
         if any(type(estimator).update is not BaseStateEstimator.update for estimator in estimators):
             update_individually()
             return
+        # Custom filters may implement their own correction or bookkeeping in update().
+        if any(type(estimator.kf).update is not KalmanFilter.update for estimator in estimators):
+            update_individually()
+            return
         KalmanFilter.update_batch(
             [estimator.kf for estimator in estimators],
             [estimator.bbox_to_measurement(bbox) for estimator, bbox in zip(estimators, bboxes)],

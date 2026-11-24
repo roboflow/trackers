@@ -54,7 +54,16 @@ class BaseTracklet(ABC):
             tracklets: Tracklets matched to a detection on this frame.
             bboxes: The matching bounding box per tracklet, ``[x1, y1, x2, y2]``.
         """
+        if len(tracklets) != len(bboxes):
+            raise ValueError("tracklets and bboxes must have the same length")
         if not tracklets:
+            return
+        # Only tracklet updates explicitly paired with mark_updated can safely bypass update().
+        if any(
+            getattr(type(tracklet), "_batch_update_method", None) is not type(tracklet).update for tracklet in tracklets
+        ):
+            for tracklet, bbox in zip(tracklets, bboxes):
+                tracklet.update(bbox)
             return
         BaseStateEstimator.update_batch([tracklet.state_estimator for tracklet in tracklets], bboxes)
         for tracklet in tracklets:

@@ -35,6 +35,8 @@ class SORTTracklet(BaseTracklet):
         self.state_estimator.update(bbox)
         self.mark_updated()
 
+    _batch_update_method = update
+
     def mark_updated(self) -> None:
         """Reset the miss clocks and count the observation as a successful update."""
         super().mark_updated()

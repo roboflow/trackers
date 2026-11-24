@@ -180,6 +180,12 @@ class KalmanFilter:
             ):
                 raise ValueError("update_batch requires filters with the same model")
 
+        # Preserve custom corrections and their side effects when called directly.
+        if any(type(kf).update is not KalmanFilter.update for kf in filters):
+            for kf, measurement in zip(filters, measurements):
+                kf.update(measurement)
+            return
+
         states = np.stack([kf.state for kf in filters])
         covariances = np.stack([kf.state_covariance for kf in filters])
         observations = np.stack([np.asarray(z, dtype=np.float64).reshape((dim_z, 1)) for z in measurements])
