@@ -327,7 +327,7 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        gt_format = _detect_format(self._gt_dir)
+        gt_format = _detect_format(self._gt_dir, self._sequences)
         gt_paths = [_get_paths(self._gt_dir, self._detections_dir, seq, gt_format)[0] for seq in self._sequences]
         missing_gt_files = [str(gt_path) for gt_path in gt_paths if not gt_path.is_file()]
         if missing_gt_files:
