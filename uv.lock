@@ -4651,7 +4651,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "opencv-python", specifier = ">=4.8.0" },
     { name = "optuna", marker = "extra == 'tune'", specifier = ">=3.0.0" },
-    { name = "pydeprecate", specifier = ">=0.8.0" },
+    { name = "pydeprecate", specifier = ">=0.12.0" },
     { name = "reid", marker = "extra == 'reid'", specifier = "==0.1.0" },
     { name = "requests", specifier = ">=2.28.0" },
     { name = "rf-cutie", extras = ["inference"], marker = "extra == 'mask'", specifier = ">=1.0.0" },
