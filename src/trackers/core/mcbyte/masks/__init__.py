@@ -77,7 +77,7 @@ _DEPRECATION = {
     # pyDeprecate's built-in template names the class only, which does not say
     # which import to fix. The prefix is spelled out so the proxied names read
     # the same as the ``__getattr__`` ones below.
-    "template_mgs": (
+    "message_template": (
         "The `trackers.core.mcbyte.masks.%(source_name)s` was deprecated since v%(deprecated_in)s"
         " in favor of `%(target_path)s`. It will be removed in v%(remove_in)s."
     ),

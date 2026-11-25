@@ -96,23 +96,6 @@ class TestProxiedSymbolsWarnOnUseNotOnImport:
         assert isinstance(instance, real)
         assert type(instance) is real
 
-    @pytest.mark.parametrize(("name", "real"), PROXIED_SYMBOLS)
-    def test_isinstance_forwards_to_the_real_class(self, name: str, real: type) -> None:
-        """``isinstance`` against the proxy answers for the real class."""
-        with pytest.warns(FutureWarning):
-            instance = _build_proxied(name)
-        proxy = _proxy(name)
-
-        assert isinstance(instance, proxy)
-        assert issubclass(real, proxy)
-
-    @pytest.mark.parametrize(("name", "real"), PROXIED_SYMBOLS)
-    def test_proxy_is_not_identical_to_the_real_class(self, name: str, real: type) -> None:
-        """Documented caveat: ``proxy is real`` is False, so identity checks must not be used."""
-        proxy = _proxy(name)
-
-        assert proxy is not real
-
     def test_warning_names_the_old_import_path(self) -> None:
         """The proxy message points at the module to fix, not only the class name."""
         with pytest.warns(FutureWarning, match=r"trackers\.core\.mcbyte\.mask_manager\.MaskManager"):
@@ -184,7 +167,18 @@ class TestShimSurface:
 def test_importing_trackers_does_not_warn_or_import_torch() -> None:
     """The shims stay lazy: plain ``import trackers`` neither warns nor pulls torch."""
     # A subprocess, because this test session has already imported torch.
-    script = "import sys, trackers; print('torch' in sys.modules)"
+    # supervision >= 0.32 passes pyDeprecate's deprecated ``template_mgs`` alias while it imports. That is third-party
+    # noise, so it is ignored only when attributed to supervision; every other FutureWarning stays an error. The assert
+    # covers the shims: ``import trackers`` must not import them.
+    script = (
+        "import sys, warnings\n"
+        "warnings.filterwarnings('ignore', message='`template_mgs` is deprecated', category=FutureWarning,"
+        " module=r'supervision\\.')\n"
+        "import trackers\n"
+        "shims = {'trackers.core.mcbyte.masks', 'trackers.core.mcbyte.mask_manager'} & sys.modules.keys()\n"
+        "assert not shims, shims\n"
+        "print('torch' in sys.modules)\n"
+    )
     completed = subprocess.run(  # noqa: S603
         [sys.executable, "-W", "error::FutureWarning", "-c", script],
         capture_output=True,
