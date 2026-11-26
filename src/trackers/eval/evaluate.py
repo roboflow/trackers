@@ -315,14 +315,11 @@ def evaluate_mot_sequences(
     if not tracker_dir.exists():
         raise FileNotFoundError(f"Tracker directory not found: {tracker_dir}")
 
-    # Detect directory format
-    data_format = _detect_format(gt_dir)
+    sequences = _parse_seqmap(seqmap) if seqmap is not None else None
+    data_format = _detect_format(gt_dir, sequences)
     logger.info("Detected format: %s", data_format)
 
-    # Get sequence list
-    if seqmap is not None:
-        sequences = _parse_seqmap(seqmap)
-    else:
+    if sequences is None:
         sequences = _discover_sequences(gt_dir, data_format)
 
     if not sequences:
@@ -414,16 +411,24 @@ def _warn_if_mot20_sequences_use_mot17_config(sequence_names: Iterable[str], cla
     )
 
 
-def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
+def _detect_format(gt_dir: Path, sequences: list[str] | None = None) -> Literal["flat", "mot"]:
     """Auto-detect directory format.
 
     Args:
         gt_dir: Ground truth directory (direct parent of sequences).
+        sequences: Selected sequence names, when known.
 
     Returns:
-        "flat" if .txt files exist in gt_dir, "mot" if sequence
-        subdirectories with gt/gt.txt exist.
+        Detected layout, preferring selected sequences over unrelated files when names are supplied.
     """
+    # When names are known, unrelated text files must not override the selected sequences' layout.
+    # Keep flat precedence when both layouts contain a selected sequence.
+    if sequences is not None:
+        if any((gt_dir / f"{seq}.txt").is_file() for seq in sequences):
+            return "flat"
+        if any((gt_dir / seq / "gt" / "gt.txt").is_file() for seq in sequences):
+            return "mot"
+
     # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
     # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
     txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
