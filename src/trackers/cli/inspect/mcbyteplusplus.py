@@ -32,8 +32,19 @@ from rich.progress import (
 )
 
 from trackers.cli._detections import build_detections, find_frame_path, load_rgb_frame, read_detection_file
-from trackers.cli._mcbyteplusplus import CMCOptions, TrackerOptions, _HubAuthNoticeFilter, visualize_mcbyteplusplus
+from trackers.cli._mcbyteplusplus import (
+    CMCOptions,
+    TrackerOptions,
+    _add_reid_arguments,
+    _HubAuthNoticeFilter,
+    _load_mcbyteplusplus_reid,
+    _reid_provenance,
+    _tracker_kwargs,
+    _validate_reid_options,
+    visualize_mcbyteplusplus,
+)
 from trackers.cli._parser import register_argument_adder
+from trackers.cli._reid_output import _ReIDResultWriter, _sort_mot_results
 from trackers.cli._tracking import SequenceOptions as TrackingSequenceOptions
 from trackers.cli._tracking import append_mot_results
 from trackers.cli.inspect._common import (
@@ -42,6 +53,7 @@ from trackers.cli.inspect._common import (
     timestamped_run_dir,
 )
 from trackers.cli.inspect.edgetam import _versions
+from trackers.cli.track import ReIDModelConfig
 from trackers.core.masks.edgetam import EdgeTAMMaskBackend
 from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
 
@@ -64,6 +76,7 @@ def mcbyteplusplus_inspection(
     edgetam: McBytePlusPlusMaskConfig | None = None,
     tracker: TrackerOptions | None = None,
     output_dir: Path = INSPECT_OUTPUT_ROOT / "mcbyteplusplus",
+    reid: ReIDModelConfig | None = None,
 ) -> int:
     """Inspect McByte++ with EdgeTAM masks on selected detection frames.
 
@@ -78,20 +91,28 @@ def mcbyteplusplus_inspection(
     and other logged diagnostics remain visible. A terminal message points to
     the saved warnings when any were captured.
 
+    With re-ID enabled, collect current finalized identities and previously
+    pending observations automatically for MOT output, including the final
+    records returned by ``finish()``. Live frames show pending identities as
+    ``-1``; historical identity resolution does not redraw earlier frames.
+
     Args:
         sequence: Input frames, detection file and inclusive frame range.
         cmc: Camera-motion compensation; defaults to ORB at downscale four.
         edgetam: EdgeTAM model, device and bounded-session settings.
-        tracker: Association, confirmation, creation and refresh settings.
+        tracker: Association, confirmation, mask lifecycle and re-ID joining settings.
         output_dir: Root for timestamped output directories.
+        reid: Optional encoder source and device. McByte++ requires an explicit
+            model; use tracker.reid_joining_config to customize joining.
 
     Returns:
-        Zero on success, one on invalid input or inference failure. Failed
-        runs retain a manifest and any completed outputs.
+        Zero on success, one on invalid input or inference failure, or 130 on
+        keyboard interruption. Unfinished runs retain a manifest and completed outputs.
     """
     cmc = cmc or CMCOptions()
     edgetam = edgetam or McBytePlusPlusMaskConfig()
     tracker_options = tracker or TrackerOptions()
+    reid = reid or ReIDModelConfig()
     run_dir = None
     tracker_obj = None
     manifest: dict[str, Any] = {"status": "failed", "tracker": "mcbyteplusplus", "frames": []}
@@ -101,6 +122,7 @@ def mcbyteplusplus_inspection(
     hub_logger.addFilter(hub_notice_filter)
     with warnings.catch_warnings(record=True) as caught_warnings:
         try:
+            _validate_reid_options(reid, tracker_options.reid_joining_config)
             if sequence.start_frame <= 0 or sequence.end_frame < sequence.start_frame:
                 raise ValueError("sequence frame range must be positive and inclusive.")
             if not math.isfinite(sequence.frame_rate) or sequence.frame_rate <= 0 or cmc.downscale <= 0:
@@ -125,11 +147,17 @@ def mcbyteplusplus_inspection(
                 "tracker": asdict(tracker_options),
                 "cmc": asdict(cmc),
                 "edgetam": asdict(edgetam),
+                "reid": asdict(reid),
                 "output_dir": str(output_dir.resolve()),
             }
             (run_dir / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
             manifest["config"] = config
             manifest["detection_sha256"] = hashlib.sha256(sequence.det_file.read_bytes()).hexdigest()
+            reid_model = _load_mcbyteplusplus_reid(reid)
+            manifest["reid"] = _reid_provenance(reid, reid_model)
+            manifest["versions"]["reid"] = manifest["reid"]["reid_version"]
+            if reid_model is not None:
+                config["reid"]["device"] = manifest["reid"]["device"]
             tracker_obj = McBytePlusPlusTracker(
                 frame_rate=sequence.frame_rate,
                 enable_cmc=cmc.enable,
@@ -141,8 +169,11 @@ def mcbyteplusplus_inspection(
                 cmc_maximum_scale=cmc.maximum_scale,
                 enable_mask_manager=True,
                 edgetam_config=edgetam,
-                **asdict(tracker_options),
+                reid_model=reid_model,
+                **_tracker_kwargs(asdict(tracker_options)),
             )
+            if tracker_obj.reid_joiner is not None:
+                config["tracker"]["reid_joining_config"] = asdict(tracker_obj.reid_joiner.config)
             if tracker_obj.mask_manager is None:
                 raise RuntimeError("McByte++ inspection requires its mask manager.")
             backend = cast(EdgeTAMMaskBackend, tracker_obj.mask_manager.mask_propagator)
@@ -161,30 +192,49 @@ def mcbyteplusplus_inspection(
                     console=Console(stderr=True),
                 ) as progress,
             ):
+                result_writer = _ReIDResultWriter(
+                    tracker_obj,
+                    lambda number, values: append_mot_results(
+                        results_file=results_file, frame_number=number, tracked_detections=values
+                    ),
+                )
                 task = progress.add_task("McByte++", total=len(frame_paths))
-                for number, frame_path in zip(range(sequence.start_frame, sequence.end_frame + 1), frame_paths):
-                    rgb = load_rgb_frame(frame_path)
-                    tracked = tracker_obj.update(
-                        build_detections(detections.get(number, [])), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-                    )
-                    append_mot_results(results_file=results_file, frame_number=number, tracked_detections=tracked)
-                    save_rgb_image(
-                        visualize_mcbyteplusplus(rgb, number, tracked, tracker_obj),
-                        run_dir / "frames" / frame_path.name,
-                    )
-                    manifest["frames"].append(
-                        {
-                            "frame": number,
-                            "file": frame_path.name,
-                            "sha256": hashlib.sha256(frame_path.read_bytes()).hexdigest(),
-                            "session_index": backend.session_index,
-                            "session_frame_count": backend.session_frame_count,
-                            "output_ids": [] if tracked.tracker_id is None else tracked.tracker_id.tolist(),
-                            "excluded_mask_ids": sorted(tracker_obj.untrusted_mask_ids),
-                        }
-                    )
-                    progress.advance(task)
+                interrupted = False
+                try:
+                    for number, frame_path in zip(range(sequence.start_frame, sequence.end_frame + 1), frame_paths):
+                        rgb = load_rgb_frame(frame_path)
+                        tracked = tracker_obj.update(
+                            build_detections(detections.get(number, [])), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                        )
+                        result_writer.write_current(number, tracked)
+                        save_rgb_image(
+                            visualize_mcbyteplusplus(rgb, number, tracked, tracker_obj),
+                            run_dir / "frames" / frame_path.name,
+                        )
+                        manifest["frames"].append(
+                            {
+                                "frame": number,
+                                "file": frame_path.name,
+                                "sha256": hashlib.sha256(frame_path.read_bytes()).hexdigest(),
+                                "session_index": backend.session_index,
+                                "session_frame_count": backend.session_frame_count,
+                                "output_ids": [] if tracked.tracker_id is None else tracked.tracker_id.tolist(),
+                                "excluded_mask_ids": sorted(tracker_obj.untrusted_mask_ids),
+                            }
+                        )
+                        progress.advance(task)
+                except KeyboardInterrupt:
+                    interrupted = True
+                result_writer.finish(completed_only=interrupted)
+                manifest["reid_finalized_rows"] = result_writer.historical_rows
+            if result_writer.historical_rows:
+                _sort_mot_results(run_dir / "results.txt")
+            if interrupted:
+                raise KeyboardInterrupt
             manifest["status"] = "completed"
+        except KeyboardInterrupt:
+            manifest.update(status="interrupted", error="Keyboard interruption")
+            exit_code = 130
         except (OSError, ImportError, ValueError, RuntimeError) as error:
             manifest["error"] = str(error)
             print(f"Error: {error}", file=sys.stderr)
@@ -228,6 +278,7 @@ def _add_inspect_arguments(parser: ArgumentParser) -> list[str]:
     )
     for option_class, key in groups:
         added.extend(parser.add_class_arguments(option_class, key))
+    added.extend(_add_reid_arguments(parser))
     parser.add_argument("--output_dir", type=Path, default=INSPECT_OUTPUT_ROOT / "mcbyteplusplus")
     return [*added, "output_dir"]
 

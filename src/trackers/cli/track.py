@@ -23,11 +23,14 @@ import supervision as sv
 from trackers import frames_from_source
 from trackers.cli._annotate import COLOR_PALETTE as _COLOR_PALETTE
 from trackers.cli._progress import _classify_source, _SourceInfo, _TrackingProgress
+from trackers.cli._reid_output import _ReIDResultWriter, _sort_mot_results
 from trackers.core.base import BaseTracker, ParameterInfo
+from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusTracker
 from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.io.paths import _resolve_video_output_path, _validate_output_path
 from trackers.io.video import _DEFAULT_OUTPUT_FPS, _DisplayWindow, _VideoOutput
 from trackers.reid.encoder import _load_reid_encoder
+from trackers.reid.long_term_encoder import _load_long_term_encoder
 from trackers.utils.device import _best_device
 from trackers.utils.iou import variant_from_name
 
@@ -72,15 +75,17 @@ class DetectionOptions:
 class ReIDModelConfig:
     """CLI configuration for selecting and loading a Re-ID model.
 
-    Requires the ``reid`` extra (``pip install "trackers[reid]"``). BoT-SORT is
-    the only tracker that accepts an encoder today.
+    Requires the ``reid`` extra (``pip install "trackers[reid]"``). Supported by
+    BoT-SORT and McByte++; McByte++ requires an explicit model source.
 
     Attributes:
-        enable: Explicitly enable or disable appearance association. When
-            omitted, any non-default model setting enables it.
+        enable: Explicitly enable or disable appearance processing: detection
+            association in BoT-SORT or long-term identity joining in McByte++.
+            When omitted, any non-default model setting enables it.
         model: Checkpoint source: curated alias, ``hf://`` or ``http(s)://`` URL, or local path. See
             https://reid.roboflow.com/guides/loading/ for more. Implies enable and cannot be combined with an explicit
-            disable. Default alias when omitted: ``fastreid_mot17_sbs50``.
+            disable. BoT-SORT defaults to ``fastreid_mot17_sbs50``. McByte++ requires an explicit source, including
+            ``mcbyteplusplus_sports`` for its original sports checkpoint.
         device: ReID compute device: ``auto``, ``cpu``, ``cuda``, ``mps``.
         architecture: Backbone for bare ``.pth``/``.safetensors`` weights (e.g.
             ``osnet_x1_0``, ``fastreid_sbs_resnest50``). Required when ``model``
@@ -133,7 +138,7 @@ class ShowOptions:
 
     Attributes:
         boxes: Draw bounding boxes around detections.
-        masks: Draw segmentation masks (segmentation models only).
+        masks: Draw available detection masks or McByte++ backend masks.
         labels: Draw class labels.
         ids: Draw track IDs.
         confidence: Draw detection confidence scores.
@@ -512,30 +517,43 @@ def _run_frameless(
 
     total_frames = max(detections_data.keys())
     source_info = _SourceInfo(source_type="video", total_frames=total_frames)
+    result_writer = None
 
     with suppress(KeyboardInterrupt):
         with _MOTOutput(mot_results) as mot, _TrackingProgress(source_info) as progress:
-            for frame_idx in range(1, total_frames + 1):
-                if frame_idx in detections_data:
-                    dets = _mot_frame_to_detections(detections_data[frame_idx])
-                else:
-                    dets = sv.Detections.empty()
+            if isinstance(tracker, McBytePlusPlusTracker):
+                result_writer = _ReIDResultWriter(
+                    tracker,
+                    lambda number, values: mot.write(number, _filter_tracked(values, class_filter, track_id_filter)),
+                )
+            interrupted = False
+            try:
+                for frame_idx in range(1, total_frames + 1):
+                    if frame_idx in detections_data:
+                        dets = _mot_frame_to_detections(detections_data[frame_idx])
+                    else:
+                        dets = sv.Detections.empty()
 
-                if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
-                    mask = np.isin(dets.class_id, class_filter)
-                    dets = dets[mask]  # type: ignore[assignment]
+                    if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
+                        mask = np.isin(dets.class_id, class_filter)
+                        dets = dets[mask]  # type: ignore[assignment]
 
-                tracked = tracker.update(dets)
+                    tracked = tracker.update(dets)
+                    if result_writer is not None:
+                        result_writer.write_current(frame_idx, tracked)
+                    else:
+                        mot.write(frame_idx, _filter_tracked(tracked, class_filter, track_id_filter))
+                    progress.update()
 
-                if track_id_filter is not None and len(tracked) > 0 and tracked.tracker_id is not None:
-                    mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
-                    tracked = tracked[mask]  # type: ignore[assignment]
+            except KeyboardInterrupt:
+                interrupted = True
 
-                mot.write(frame_idx, tracked)
-                progress.update()
+            if result_writer is not None:
+                result_writer.finish(completed_only=interrupted)
+            progress.complete(interrupted=interrupted)
 
-            progress.complete(interrupted=False)
-
+    if result_writer is not None and result_writer.historical_rows:
+        _sort_mot_results(mot_results)
     return 0
 
 
@@ -569,6 +587,7 @@ def _run_with_source(
         sv.TraceAnnotator(color=COLOR_PALETTE, color_lookup=sv.ColorLookup.TRACK) if show.trajectories else None
     )
     display_ctx = _DisplayWindow() if display else nullcontext()
+    result_writer = None
 
     with suppress(KeyboardInterrupt):
         with (
@@ -577,50 +596,100 @@ def _run_with_source(
             display_ctx as display_win,
             _TrackingProgress(source_info) as progress,
         ):
+            if isinstance(tracker, McBytePlusPlusTracker):
+                result_writer = _ReIDResultWriter(
+                    tracker,
+                    lambda number, values: mot.write(number, _filter_tracked(values, class_filter, track_id_filter)),
+                )
             interrupted = False
-            for frame_idx, frame in frame_gen:
-                if model is not None:
-                    dets = _run_model(model, frame, confidence)
-                elif detections_data is not None and frame_idx in detections_data:
-                    dets = _mot_frame_to_detections(detections_data[frame_idx])
-                else:
-                    dets = sv.Detections.empty()
+            try:
+                for frame_idx, frame in frame_gen:
+                    if model is not None:
+                        dets = _run_model(model, frame, confidence)
+                    elif detections_data is not None and frame_idx in detections_data:
+                        dets = _mot_frame_to_detections(detections_data[frame_idx])
+                    else:
+                        dets = sv.Detections.empty()
 
-                if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
-                    mask = np.isin(dets.class_id, class_filter)
-                    dets = dets[mask]  # type: ignore[assignment]
+                    if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
+                        mask = np.isin(dets.class_id, class_filter)
+                        dets = dets[mask]  # type: ignore[assignment]
 
-                tracked = tracker.update(dets, frame)
+                    tracked = tracker.update(dets, frame)
+                    if result_writer is not None:
+                        result_writer.write_current(frame_idx, tracked)
+                    tracked = _filter_tracked(tracked, class_filter, track_id_filter)
+                    if result_writer is None:
+                        mot.write(frame_idx, tracked)
+                    progress.update()
 
-                if track_id_filter is not None and len(tracked) > 0 and tracked.tracker_id is not None:
-                    mask = np.isin(tracked.tracker_id.astype(int), track_id_filter)
-                    tracked = tracked[mask]  # type: ignore[assignment]
+                    if display or output:
+                        annotated = frame.copy()
+                        if trace_annotator is not None:
+                            annotated = trace_annotator.annotate(annotated, tracked)
+                        for ann in annotators:
+                            mask_detections = (
+                                _mcbyteplusplus_mask_detections(tracked, tracker)
+                                if isinstance(ann, sv.MaskAnnotator) and isinstance(tracker, McBytePlusPlusTracker)
+                                else tracked
+                            )
+                            annotated = ann.annotate(annotated, mask_detections)
+                        if label_annotator is not None:
+                            pending = np.asarray(tracked.data.get("reid_pending", np.zeros(len(tracked), dtype=bool)))
+                            labeled = tracked[(tracked.tracker_id != -1) | pending]
+                            labels = _format_labels(labeled, class_names, show)
+                            annotated = label_annotator.annotate(annotated, labeled, labels)
 
-                mot.write(frame_idx, tracked)
-                progress.update()
+                        video.write(annotated)
 
-                if display or output:
-                    annotated = frame.copy()
-                    if trace_annotator is not None:
-                        annotated = trace_annotator.annotate(annotated, tracked)
-                    for ann in annotators:
-                        annotated = ann.annotate(annotated, tracked)
-                    if label_annotator is not None:
-                        labeled = tracked[tracked.tracker_id != -1]
-                        labels = _format_labels(labeled, class_names, show)
-                        annotated = label_annotator.annotate(annotated, labeled, labels)
+                        if display_win is not None:
+                            display_win.show(annotated)
+                            if display_win.quit_requested:
+                                interrupted = True
+                                break
 
-                    video.write(annotated)
+            except KeyboardInterrupt:
+                interrupted = True
 
-                    if display_win is not None:
-                        display_win.show(annotated)
-                        if display_win.quit_requested:
-                            interrupted = True
-                            break
-
+            if result_writer is not None:
+                result_writer.finish(completed_only=interrupted)
             progress.complete(interrupted=interrupted)
 
+    if result_writer is not None and result_writer.historical_rows:
+        _sort_mot_results(mot_results)
     return 0
+
+
+def _filter_tracked(
+    detections: sv.Detections, class_filter: list[int] | None, track_id_filter: list[int] | None
+) -> sv.Detections:
+    """Apply the same output selection to current and historical observations."""
+    if class_filter is not None and detections.class_id is not None:
+        detections = detections[np.isin(detections.class_id, class_filter)]
+    if track_id_filter is not None and detections.tracker_id is not None:
+        detections = detections[np.isin(detections.tracker_id.astype(int), track_id_filter)]
+    return detections
+
+
+def _mcbyteplusplus_mask_detections(detections: sv.Detections, tracker: McBytePlusPlusTracker) -> sv.Detections:
+    """Select backend masks by internal owner, even after public IDs reconnect.
+
+    When masks are available, build annotation detections whose ``tracker_id`` stores internal mask owners for colour
+    selection. Public IDs on the input detections remain unchanged.
+    """
+    output = tracker.last_mask_output
+    if output is None or output.masks is None:
+        return detections
+    internal_ids = detections.data.get("tracklet_id", detections.tracker_id)
+    if internal_ids is None:
+        return sv.Detections.empty()
+    selected = [index for index, identity in enumerate(internal_ids) if int(identity) in output.tracklet_mask_dict]
+    if not selected:
+        return sv.Detections.empty()
+    result = detections[np.asarray(selected, dtype=int)]
+    result.tracker_id = np.asarray(internal_ids, dtype=int)[selected]
+    result.mask = np.asarray([output.masks[output.tracklet_mask_dict[int(internal_ids[index])]] for index in selected])
+    return result
 
 
 def _resolve_track_id_filter(track_ids_arg: list[str | int] | None) -> list[int] | None:
@@ -795,7 +864,7 @@ def _warn_dropped_tracker_overrides(tracker_id: str, dropped: list[str]) -> None
 
 
 def _reid_requested(reid: ReIDModelConfig) -> bool:
-    """Whether the command line asked for appearance association.
+    """Check whether the command line requested appearance association or identity joining.
 
     Raises:
         ValueError: If a checkpoint is combined with an explicit disable.
@@ -807,11 +876,12 @@ def _reid_requested(reid: ReIDModelConfig) -> bool:
     return reid.model is not None or reid.architecture is not None or reid.device != DEFAULT_DEVICE
 
 
-def _load_reid_model(reid: ReIDModelConfig) -> Any:
+def _load_reid_model(reid: ReIDModelConfig, *, long_term: bool = False) -> Any:
     """Build the ReID encoder described by ``reid``.
 
     Args:
         reid: Encoder selection and loading options.
+        long_term: Use McByte++'s explicit encoder sources without a default.
 
     Returns:
         A ``reid.ReIDModel`` satisfying the ``ReIDEncoder`` protocol.
@@ -824,6 +894,10 @@ def _load_reid_model(reid: ReIDModelConfig) -> Any:
     """
     if reid.architecture is not None and reid.model is None:
         raise ValueError("--reid.architecture requires --reid.model (bare weights need a checkpoint path).")
+    if long_term:
+        if not reid.model:
+            raise ValueError("McByte++ ReID requires --reid.model, for example mcbyteplusplus_sports.")
+        return _load_long_term_encoder(reid.model, device=reid.device, architecture=reid.architecture)
     return _load_reid_encoder(reid.model or DEFAULT_REID_MODEL, device=reid.device, architecture=reid.architecture)
 
 
@@ -896,7 +970,9 @@ def _init_tracker(
     if reid is not None and _reid_requested(reid):
         if "reid_model" not in accepted:
             raise ValueError(f"--reid.* options apply only to a tracker that accepts an encoder, got '{tracker_id}'.")
-        kwargs["reid_model"] = _load_reid_model(reid)
+        kwargs["reid_model"] = (
+            _load_reid_model(reid, long_term=True) if tracker_id == "mcbyteplusplus" else _load_reid_model(reid)
+        )
     return info.tracker_class(**kwargs)
 
 
@@ -952,7 +1028,8 @@ def _format_labels(detections: sv.Detections, class_names: list[str], show: Show
     for i in range(len(detections)):
         parts: list[str] = []
         if show.ids and detections.tracker_id is not None:
-            parts.append(f"#{int(detections.tracker_id[i])}")
+            pending = detections.data.get("reid_pending")
+            parts.append("#-1 pending" if pending is not None and pending[i] else f"#{int(detections.tracker_id[i])}")
         if show.labels and detections.class_id is not None:
             class_id = int(detections.class_id[i])
             if class_names and 0 <= class_id < len(class_names):

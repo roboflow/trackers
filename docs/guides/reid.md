@@ -7,6 +7,8 @@ description: Use ReID appearance association with BoT-SORT in Roboflow Trackers,
 
 BoT-SORT can fuse appearance embeddings with IoU during association. Embeddings come from a model in the standalone [`reid`](https://github.com/roboflow/re-ID) package. See the [ReID API](../api/reid.md) for the association helpers.
 
+McByte++ uses the same encoder interface for a separate optional long-term joining policy. Its terminated-identity gallery, mutual-best matching and historical output contract are described in the [McByte++ guide](../trackers/mcbyteplusplus.md#optional-long-term-re-identification). With a model selected, McByte++ defaults to pausing new re-ID feature extraction during strong estimated camera motion and subject occlusion, with corresponding pending identity deadline extensions and historical buffering. The BoT-SORT fusion settings and results below do not describe that policy; McByte++ requires an explicit model selection on the CLI.
+
 **What you'll learn:**
 
 - How to enable appearance association on BoT-SORT

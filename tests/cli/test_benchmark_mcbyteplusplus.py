@@ -23,6 +23,7 @@ import supervision as sv
 from trackers.cli._parser import _CLIParser
 from trackers.cli.benchmark import BENCHMARK_COMMANDS
 from trackers.cli.benchmark import mcbyteplusplus as module
+from trackers.cli.track import ReIDModelConfig
 from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
 
 
@@ -49,6 +50,7 @@ def _install_tracker(monkeypatch: pytest.MonkeyPatch, error: BaseException | Non
     class FakeTracker:
         last_mask_output = None
         untrusted_mask_ids: frozenset[int] = frozenset()
+        reid_joiner = None
 
         def __init__(self, **kwargs: Any) -> None:
             self.options = kwargs
@@ -61,6 +63,7 @@ def _install_tracker(monkeypatch: pytest.MonkeyPatch, error: BaseException | Non
             self.frames: list[np.ndarray] = []
             self.detections: list[sv.Detections] = []
             self.reset_called = False
+            self.finish_called = False
             instances.append(self)
 
         def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
@@ -74,6 +77,11 @@ def _install_tracker(monkeypatch: pytest.MonkeyPatch, error: BaseException | Non
 
         def reset(self) -> None:
             self.reset_called = True
+
+        def finish(self) -> dict[int, sv.Detections]:
+            assert not self.reset_called
+            self.finish_called = True
+            return {}
 
     monkeypatch.setattr(module, "McBytePlusPlusTracker", FakeTracker)
     return instances
@@ -112,6 +120,7 @@ def test_benchmark_saves_complete_sequences_and_replayable_config(
     assert [instance.options["frame_rate"] for instance in instances] == [25, 20]
     for instance, sequence in zip(instances, report["sequences"]):
         assert instance.reset_called
+        assert instance.finish_called
         assert len(instance.frames) == 3
         np.testing.assert_array_equal(instance.detections[0].confidence, [1.0])
         np.testing.assert_array_equal(instance.frames[0][0, 0], [230, 10, 20])
@@ -455,3 +464,57 @@ def test_accelerator_timing_waits_for_the_selected_device(monkeypatch: pytest.Mo
     for device in ("cpu", "cuda:1", "mps"):
         module._synchronize(device)
     assert calls == ["cuda:1", "mps"]
+
+
+def test_tracking_timer_waits_for_separate_reid_device_and_keeps_finalization_separate(
+    dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Appearance work counts inside updates even when masks use a different device."""
+    _install_tracker(monkeypatch)
+    tracker_class = module.McBytePlusPlusTracker
+    original_update = tracker_class.update
+    original_finish = tracker_class.finish
+    clock = {"seconds": 0.0, "pending": 0.0}
+    devices = []
+
+    def load(options: ReIDModelConfig) -> Any:
+        clock["seconds"] += 5.0
+        return SimpleNamespace(device="cuda:1")
+
+    def update(self: Any, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
+        clock["seconds"] += 2.0
+        clock["pending"] = 3.0
+        return original_update(self, detections, frame)
+
+    def finish(self: Any) -> dict[int, sv.Detections]:
+        clock["seconds"] += 7.0
+        return original_finish(self)
+
+    def synchronize(device: str) -> None:
+        devices.append(device)
+        if device == "cuda:1":
+            clock["seconds"] += clock["pending"]
+            clock["pending"] = 0.0
+
+    monkeypatch.setattr(module, "_load_mcbyteplusplus_reid", load)
+    monkeypatch.setattr(tracker_class, "update", update)
+    monkeypatch.setattr(tracker_class, "finish", finish)
+    monkeypatch.setattr(module, "_synchronize", synchronize)
+    monkeypatch.setattr(module, "perf_counter", lambda: clock["seconds"])
+    output_root = tmp_path / "runs"
+    assert (
+        module.benchmark_command(
+            dataset,
+            sequences=["SNMOT-116"],
+            output_root=output_root,
+            save_frames=False,
+            reid=ReIDModelConfig(model="fake-encoder"),
+        )
+        == 0
+    )
+    report = json.loads(next(output_root.glob("*/run.json")).read_text())
+    assert report["reid_model_load_seconds"] == 5.0
+    assert report["totals"]["tracking_seconds"] == 15.0
+    assert report["totals"]["finalization_seconds"] == 7.0
+    assert report["totals"]["end_to_end_seconds"] == 27.0
+    assert set(devices) == {"cpu", "cuda:1"}

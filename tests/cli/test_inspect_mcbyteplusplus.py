@@ -64,6 +64,8 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
         untrusted_mask_ids = frozenset({7})
         mask_manager = SimpleNamespace(mask_propagator=backend)
         reset_called = False
+        finish_called = False
+        reid_joiner = None
 
         def __init__(self, **kwargs: Any) -> None:
             calls.append(kwargs)
@@ -87,6 +89,11 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
 
         def reset(self) -> None:
             FakeTracker.reset_called = True
+
+        def finish(self) -> dict[int, sv.Detections]:
+            assert not self.reset_called
+            FakeTracker.finish_called = True
+            return {}
 
     monkeypatch.setattr(module, "McBytePlusPlusTracker", FakeTracker)
     sequence = SequenceOptions(image_dir, detections, 2, 3, confidence_override=1.0)
@@ -138,6 +145,7 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
     assert calls[0]["cmc_maximum_scale"] == 2.0
     assert calls[0]["enable_mask_trust_filter"] is True
     assert FakeTracker.reset_called
+    assert FakeTracker.finish_called is not fail_on_second
     parser = _CLIParser(exit_on_error=False)
     parser.add_argument("--config", action=ActionConfigFile)
     parser.add_function_arguments(mcbyteplusplus_inspection)

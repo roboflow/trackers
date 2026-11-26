@@ -23,6 +23,38 @@ from trackers.utils.state_representations import BaseStateEstimator, XCYCSRState
 METHODS: list[CMCMethod] = ["orb", "sift", "sparseOptFlow", "ecc"]
 
 
+@pytest.mark.parametrize(
+    "affine,expected",
+    [
+        (np.eye(2, 3), 0.0),
+        (np.array([[1, 0, 30], [0, 1, 40]]), 50 / np.hypot(101, 101)),
+        (np.array([[2, 0, -50], [0, 2, -50]]), 50 / 101),
+        (np.array([[0, -1, 100], [1, 0, 0]]), 100 / np.hypot(101, 101)),
+    ],
+    ids=["stationary", "translation", "zoom-about-centre", "rotation-about-centre"],
+)
+def test_motion_score_includes_translation_rotation_and_zoom(affine: np.ndarray, expected: float) -> None:
+    """Corner displacement detects motion even without an origin translation."""
+    assert ConditionalCMC.motion_score(affine, (101, 101)) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("method", METHODS)
+def test_estimate_availability_distinguishes_stationary_from_unavailable(method: CMCMethod, image: np.ndarray) -> None:
+    """Identical textured images are valid evidence; fallback identity is not."""
+    cmc = ConditionalCMC(ConditionalCMCConfig(method=method, downscale=2))
+    assert not cmc.last_estimate_available
+    cmc.estimate(image)
+    assert not cmc.last_estimate_available
+    np.testing.assert_allclose(cmc.estimate(image), np.eye(2, 3), atol=1e-4)
+    assert cmc.last_estimate_available
+    cmc.estimate(None)
+    assert not cmc.last_estimate_available
+    cmc.estimate(image)
+    assert cmc.last_estimate_available
+    cmc.reset()
+    assert not cmc.last_estimate_available
+
+
 @pytest.fixture
 def image() -> np.ndarray:
     """Textured, repeatable background with enough features for every method."""
@@ -64,6 +96,7 @@ def test_reset_missing_images_and_resolution_changes(method: CMCMethod, image: n
     cmc.estimate(image)
     # A missing image returns identity while retaining the last usable reference.
     np.testing.assert_array_equal(cmc.estimate(None), np.eye(2, 3))
+    assert not cmc.last_estimate_available
     np.testing.assert_allclose(cmc.estimate(translate(image, 4, 2))[:, 2], [4, 2], atol=0.8)
     # Even resolutions that floor-divide to the same size require re-seeding.
     resized = np.pad(translate(image, 8, 4), ((0, 1), (0, 1), (0, 0)), mode="edge")
@@ -96,6 +129,8 @@ def test_opencv_failure_clears_reference_then_recovers(
     """An interrupted estimate must not span the failed frame on the next call."""
     cmc = ConditionalCMC(ConditionalCMCConfig(method=method, downscale=2))
     cmc.estimate(image)
+    cmc.estimate(image)
+    assert cmc.last_estimate_available
     name = {"orb": "knnMatch", "sift": "knnMatch", "sparseOptFlow": "calcOpticalFlowPyrLK", "ecc": "findTransformECC"}[
         method
     ]
@@ -110,6 +145,7 @@ def test_opencv_failure_clears_reference_then_recovers(
         else:
             scoped.setattr(cv2, name, fail)
         np.testing.assert_array_equal(cmc.estimate(translate(image, 4, 2)), np.eye(2, 3))
+        assert not cmc.last_estimate_available
     assert cmc.frames_failed == 1
     # With OpenCV restored, the next frame seeds a new reference instead of matching stale history.
     np.testing.assert_array_equal(cmc.estimate(translate(image, 8, 4)), np.eye(2, 3))
@@ -188,6 +224,7 @@ def test_unsuccessful_fit_keeps_current_reference(
     np.testing.assert_array_equal(cmc.estimate(image), np.eye(2, 3))
     np.testing.assert_array_equal(cmc._prev_desc, payload.descriptors)
     assert cmc.frames_failed == expected_failures
+    assert not cmc.last_estimate_available
 
 
 def test_detection_exclusion_clips_to_image_edges(image: np.ndarray) -> None:

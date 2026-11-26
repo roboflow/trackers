@@ -32,10 +32,16 @@ class McBytePlusPlusTracklet(ScaleAwareNoiseTracklet):
       counts all matched updates; a missed detection does not reset it.
 
     ``tracker_id`` and ``public_id`` both start at ``-1``. The tracker assigns
-    them when confirming a track. The internal ``tracker_id`` identifies mask
-    ownership; ``public_id`` is exported to users. They currently receive the
-    same value, but keeping them separate permits later identity mapping
-    without moving masks between tracklets. This class neither runs EdgeTAM
+    the internal ID when confirming a track. The internal ``tracker_id``
+    identifies mask ownership; ``public_id`` is exported to users. Without
+    re-ID they receive the same value. With joining enabled, the public ID may
+    remain pending or refer to an older trajectory, without moving masks or
+    motion state between tracklets. Birth references retain the original
+    observation's processing frame and re-ID step across delayed confirmation.
+    ``reid_paused_steps`` preserves camera-motion or box-occlusion pauses after birth until the
+    joining component first registers the track, including its confirmation
+    update. The component then maintains its own capped decision age.
+    This class neither runs EdgeTAM
     nor stores mask arrays; the tracker and mask backend handle those tasks.
 
     Args:
@@ -53,6 +59,9 @@ class McBytePlusPlusTracklet(ScaleAwareNoiseTracklet):
         self._configure_initial_noise(initial_bbox)
         self.number_of_successful_updates = 1
         self.public_id = -1
+        self.start_frame = 0
+        self.start_reid_step = 0
+        self.reid_paused_steps = 0
 
     def update(self, bbox: np.ndarray) -> None:
         """Correct the motion estimate using one matched detection box.

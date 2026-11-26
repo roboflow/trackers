@@ -356,6 +356,8 @@ The commonly used arguments accepted by the `trackers track` command. `--tracker
 
 Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset means the selected tracker's own default value is used, and that value differs per algorithm. See the [tracker API reference](../api/trackers.md) for actual constructor defaults and the individual [SORT](../trackers/sort.md), [ByteTrack](../trackers/bytetrack.md), [OC-SORT](../trackers/ocsort.md), [BoT-SORT](../trackers/botsort.md), [C-BIoU](../trackers/cbiou.md), [McByte](../trackers/mcbyte.md), and [McByte++](../trackers/mcbyteplusplus.md) pages for parameter guidance. Note that OC-SORT has no `track_activation_threshold` parameter, even though `--tracker.track_activation_threshold` is exposed globally on the CLI.
 
+For McByte++ long-term joining, use `--tracker.name mcbyteplusplus --reid.model mcbyteplusplus_sports` with an image/video `--source`. Re-ID is optional and independent of masks. Selecting a model enables the default policies that skip new re-ID feature extraction during strong estimated camera motion and subject occlusion, and extend pending identity decision deadlines. Historical buffering is enabled by default. Add `--tracker.enable_mask_manager true` for EdgeTAM, and configure joining through `--tracker.reid_joining_config.*`. Current finalized rows and resolved historical rows are written automatically with the selected output filters. Pending live IDs remain `-1` and are omitted from MOT text output. The command closes the sequence and flushes its final buffered tail; see [McByte++ output semantics](../trackers/mcbyteplusplus.md#live-and-historical-output).
+
 <table>
   <colgroup>
     <col style="width: 40%">

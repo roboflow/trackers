@@ -37,12 +37,26 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from trackers.cli._detections import DetectionFileFormat, build_detections, find_frame_path, read_detection_file
-from trackers.cli._mcbyteplusplus import CMCOptions, TrackerOptions, _HubAuthNoticeFilter, visualize_mcbyteplusplus
+from trackers.cli._mcbyteplusplus import (
+    CMCOptions,
+    TrackerOptions,
+    _add_reid_arguments,
+    _HubAuthNoticeFilter,
+    _load_mcbyteplusplus_reid,
+    _reid_provenance,
+    _tracker_kwargs,
+    _validate_reid_options,
+    visualize_mcbyteplusplus,
+)
 from trackers.cli._parser import register_argument_adder
+from trackers.cli._reid_output import _ReIDResultWriter, _sort_mot_results
 from trackers.cli._tracking import append_mot_results
+from trackers.cli.track import ReIDModelConfig
 from trackers.core.masks.edgetam import EdgeTAMMaskBackend
 from trackers.core.mcbyteplusplus.tracker import McBytePlusPlusMaskConfig, McBytePlusPlusTracker
 from trackers.io.video import _VideoOutput
+from trackers.reid.encoder import ReIDEncoder
+from trackers.reid.long_term_config import LongTermReIDConfig
 
 DEFAULT_OUTPUT_ROOT = Path("outputs/mcbyteplusplus_benchmarks")
 BenchmarkDataset = Literal["soccernet", "mot17", "dancetrack", "sportsmot"]
@@ -132,7 +146,16 @@ def _synchronize(device: str) -> None:
 def _environment() -> dict[str, Any]:
     """Record software and host information without importing optional models."""
     versions: dict[str, str | None] = {}
-    for package in ("trackers", "torch", "torchvision", "transformers", "numpy", "supervision", "opencv-python"):
+    for package in (
+        "trackers",
+        "torch",
+        "torchvision",
+        "transformers",
+        "numpy",
+        "supervision",
+        "opencv-python",
+        "reid",
+    ):
         try:
             versions[package] = version(package)
         except PackageNotFoundError:
@@ -158,11 +181,12 @@ def _run_sequence(
     options: dict[str, Any],
     report: dict[str, Any],
     progress: Progress,
+    reid_model: ReIDEncoder | None = None,
 ) -> None:
     """Run one independent tracker and promote its outputs only on success.
 
     ``tracking_seconds`` sums synchronized ``update`` calls, including CMC,
-    EdgeTAM, refreshes and session rollover. Loading images, building input
+    EdgeTAM, refreshes, session rollover and optional appearance inference. Loading images, building input
     detections, model construction, drawing and writing are outside that timer.
     No warm-up frames are discarded. ``end_to_end_seconds`` includes all of
     these operations and tracker reset. Failed outputs retain partial names.
@@ -173,6 +197,7 @@ def _run_sequence(
         options: Resolved command options, also saved as config.json.
         report: Mutable sequence report, retained even if execution raises.
         progress: Progress display shared across the test-set run.
+        reid_model: Encoder loaded once for the whole run and reused across sequences.
     """
     started = perf_counter()
     tracker = None
@@ -186,6 +211,7 @@ def _run_sequence(
         requested_frames=frame_count,
         processed_frames=0,
         tracking_seconds=0.0,
+        finalization_seconds=0.0,
         frame_rate=sequence.frame_rate,
         mask_disabled_frames=0,
         save_frames=options["save_frames"],
@@ -223,12 +249,15 @@ def _run_sequence(
                 cmc_maximum_scale=options["cmc"]["maximum_scale"],
                 enable_mask_manager=True,
                 edgetam_config=McBytePlusPlusMaskConfig(**options["edgetam"]),
-                **options["tracker"],
+                reid_model=reid_model,
+                **_tracker_kwargs(options["tracker"]),
             )
             if tracker.mask_manager is None:
                 raise RuntimeError("McByte++ benchmarking requires its mask manager.")
             backend = cast(EdgeTAMMaskBackend, tracker.mask_manager.mask_propagator)
             device = str(backend.device)
+            reid_device = str(getattr(reid_model, "device", options["reid"]["device"]))
+            devices = list(dict.fromkeys([device, *([reid_device] if reid_model is not None else [])]))
             _synchronize(device)
             report.update(
                 model_load_seconds=perf_counter() - loading_started,
@@ -248,32 +277,52 @@ def _run_sequence(
                 partial_results.open("w", encoding="utf-8") as results,
                 _VideoOutput(video_path if options["save_video"] else None, fps=sequence.frame_rate) as video,
             ):
-                for number in range(1, frame_count + 1):
-                    path = find_frame_path(sequence.path / "img1", number)
-                    frame = cv2.imread(str(path))
-                    if frame is None:
-                        raise OSError(f"Could not decode {path}.")
-                    values = build_detections(detections.get(number, []))
-                    _synchronize(device)
-                    update_started = perf_counter()
-                    tracked = tracker.update(values, frame)
-                    _synchronize(device)
-                    report["tracking_seconds"] += perf_counter() - update_started
-                    report["processed_frames"] += 1
-                    report["mask_disabled_frames"] += int(tracker.mask_manager is None)
-                    if not np.isfinite(tracked.xyxy).all():
-                        raise RuntimeError(f"Non-finite tracker boxes on frame {number}.")
-                    append_mot_results(results_file=results, frame_number=number, tracked_detections=tracked)
-                    if options["save_video"] or options["save_frames"]:
-                        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        visual = cv2.cvtColor(
-                            visualize_mcbyteplusplus(rgb, number, tracked, tracker), cv2.COLOR_RGB2BGR
-                        )
-                        if not video.write(visual):
-                            raise OSError(f"Could not write {video_path}.")
-                        if options["save_frames"] and not cv2.imwrite(str(frame_dir / f"{number:06d}.jpg"), visual):
-                            raise OSError(f"Could not save annotated frame {number}.")
-                    progress.advance(task)
+                result_writer = _ReIDResultWriter(
+                    tracker,
+                    lambda number, values: append_mot_results(
+                        results_file=results, frame_number=number, tracked_detections=values
+                    ),
+                )
+                interrupted = False
+                try:
+                    for number in range(1, frame_count + 1):
+                        path = find_frame_path(sequence.path / "img1", number)
+                        frame = cv2.imread(str(path))
+                        if frame is None:
+                            raise OSError(f"Could not decode {path}.")
+                        values = build_detections(detections.get(number, []))
+                        for timed_device in devices:
+                            _synchronize(timed_device)
+                        update_started = perf_counter()
+                        tracked = tracker.update(values, frame)
+                        for timed_device in devices:
+                            _synchronize(timed_device)
+                        report["tracking_seconds"] += perf_counter() - update_started
+                        report["processed_frames"] += 1
+                        report["mask_disabled_frames"] += int(tracker.mask_manager is None)
+                        if not np.isfinite(tracked.xyxy).all():
+                            raise RuntimeError(f"Non-finite tracker boxes on frame {number}.")
+                        result_writer.write_current(number, tracked)
+                        if options["save_video"] or options["save_frames"]:
+                            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            visual = cv2.cvtColor(
+                                visualize_mcbyteplusplus(rgb, number, tracked, tracker), cv2.COLOR_RGB2BGR
+                            )
+                            if not video.write(visual):
+                                raise OSError(f"Could not write {video_path}.")
+                            if options["save_frames"] and not cv2.imwrite(str(frame_dir / f"{number:06d}.jpg"), visual):
+                                raise OSError(f"Could not save annotated frame {number}.")
+                        progress.advance(task)
+                except KeyboardInterrupt:
+                    interrupted = True
+                finalization_started = perf_counter()
+                result_writer.finish(completed_only=interrupted)
+                report["finalization_seconds"] = perf_counter() - finalization_started
+                report["reid_finalized_rows"] = result_writer.historical_rows
+            if result_writer.historical_rows:
+                _sort_mot_results(partial_results)
+            if interrupted:
+                raise KeyboardInterrupt
         finally:
             hub_logger.removeFilter(hub_filter)
             if tracker is not None:
@@ -316,6 +365,7 @@ def _summarize(reports: list[dict[str, Any]], elapsed: float) -> dict[str, Any]:
         "failed_sequences": sum(report["status"] == "failed" for report in reports),
         "completed_frames": frames,
         "tracking_seconds": tracking_seconds,
+        "finalization_seconds": sum(report.get("finalization_seconds", 0.0) for report in completed),
         "tracking_fps": frames / tracking_seconds if tracking_seconds > 0 else None,
         "end_to_end_seconds": elapsed,
         "end_to_end_fps": frames / elapsed if elapsed > 0 else None,
@@ -336,8 +386,9 @@ def benchmark_command(
     detection_root: Path | None = None,
     visual_sequences: list[str] | None = None,
     tracker_frame_rate: float | None = None,
+    reid: ReIDModelConfig | None = None,
 ) -> int:
-    """Benchmark McByte++ on saved boxes with configurable masks and visual outputs.
+    """Benchmark McByte++ on saved detections with EdgeTAM masks and configurable visual outputs.
 
     Runs every discovered sequence unless ``sequences`` selects a subset.
     Always enables EdgeTAM; CMC defaults to ORB with downscale four. Detection
@@ -355,7 +406,8 @@ def benchmark_command(
     in run.json; the CLI beta notice remains visible. HOTA, IDF1 and MOTA are
     computed separately after checking that all requested sequences completed.
     Tracking FPS measures synchronized update calls, including the first
-    update, CMC and all mask work. End-to-end FPS also includes model loading,
+    update, CMC, all mask work and optional appearance inference. Finalization
+    time is reported separately. End-to-end FPS also includes model loading,
     input decoding and output writing. No detector inference is performed.
     Failed sequence outputs keep partial names and are excluded from pooled
     tracking FPS; the command continues with the remaining sequences.
@@ -365,7 +417,7 @@ def benchmark_command(
         sequences: Sequence names, e.g. [SNMOT-116,SNMOT-117]; None selects all.
         cmc: Camera motion settings; default enabled, ORB, downscale four.
         edgetam: Model, device, revision and session bound (default 200 images).
-        tracker: Association, confirmation, refresh and mask trust settings.
+        tracker: Association, confirmation, mask lifecycle and re-ID joining settings.
         output_root: Parent of a new timestamped output directory.
         save_video: Write one annotated video per sequence at its native FPS;
             off by default.
@@ -382,9 +434,11 @@ def benchmark_command(
             unique video runs once, with DPM/FRCNN/SDP copies in submission/.
         tracker_frame_rate: Optional positive reference FPS passed to the tracker;
             None uses the sequence FPS. Set 30 together with tracker.lost_track_buffer=30
-            to reproduce the research demo's 30-frame lost-track budget on every
+            to reproduce the original McByte++ demo's 30-frame lost-track budget on every
             dataset. This does not change image selection or video playback FPS.
             Reports record both rates and the tracker's effective frame budget.
+        reid: Optional explicit encoder source and device, loaded once per run.
+            Joining settings belong to tracker.reid_joining_config.
 
     Returns:
         Zero when every requested sequence completes, one on any failure,
@@ -394,7 +448,9 @@ def benchmark_command(
     cmc = cmc or CMCOptions()
     edgetam = edgetam or McBytePlusPlusMaskConfig()
     tracker = tracker or TrackerOptions()
+    reid = reid or ReIDModelConfig()
     try:
+        reid_enabled = _validate_reid_options(reid, tracker.reid_joining_config)
         if max_frames is not None and max_frames <= 0:
             raise ValueError("max_frames must be positive or null.")
         if cmc.downscale <= 0:
@@ -418,6 +474,7 @@ def benchmark_command(
         "cmc": asdict(cmc),
         "edgetam": asdict(edgetam),
         "tracker": asdict(tracker),
+        "reid": asdict(reid),
         "output_root": str(output_root.resolve()),
         "save_video": save_video,
         "save_frames": save_frames,
@@ -427,6 +484,8 @@ def benchmark_command(
         "visual_sequences": visual_sequences,
         "tracker_frame_rate": tracker_frame_rate,
     }
+    if reid_enabled and tracker.reid_joining_config is None:
+        options["tracker"]["reid_joining_config"] = asdict(LongTermReIDConfig())
     report: dict[str, Any] = {
         "status": "running",
         "dataset": "SoccerNet-tracking" if dataset == "soccernet" else dataset,
@@ -446,6 +505,15 @@ def benchmark_command(
     try:
         _write_report(run_dir / "config.json", options)
         _write_report(run_dir / "run.json", report)
+        reid_loading_started = perf_counter()
+        reid_model = _load_mcbyteplusplus_reid(reid)
+        if reid_model is not None:
+            _synchronize(str(getattr(reid_model, "device", reid.device)))
+        report["reid_model_load_seconds"] = perf_counter() - reid_loading_started
+        report["reid"] = _reid_provenance(reid, reid_model)
+        if reid_model is not None:
+            options["reid"]["device"] = report["reid"]["device"]
+        _write_report(run_dir / "config.json", options)
         with Progress(
             TextColumn("{task.description}"),
             BarColumn(),
@@ -462,7 +530,7 @@ def benchmark_command(
                 if visual_sequences is not None and sequence.name not in visual_sequences:
                     sequence_options.update(save_frames=False, save_video=False)
                 try:
-                    _run_sequence(sequence, run_dir, sequence_options, sequence_report, progress)
+                    _run_sequence(sequence, run_dir, sequence_options, sequence_report, progress, reid_model)
                 except Exception as error:
                     sequence_report.update(status="failed", error=str(error))
                     progress.console.print(f"{sequence.name} failed: {error}", markup=False)
@@ -521,6 +589,7 @@ def _add_benchmark_arguments(parser: ArgumentParser) -> list[str]:
     added: list[str] = []
     for option_class, key in ((CMCOptions, "cmc"), (McBytePlusPlusMaskConfig, "edgetam"), (TrackerOptions, "tracker")):
         added.extend(parser.add_class_arguments(option_class, key))
+    added.extend(_add_reid_arguments(parser))
     parser.add_argument(
         "--dataset_root", type=Path, required=True, help="Unzipped split directory with sequence folders."
     )
