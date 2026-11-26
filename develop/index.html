@@ -70,6 +70,7 @@
 
 
 
+
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -81,7 +82,7 @@
       "url": "https://roboflow.com",
       "description": "Roboflow builds computer vision infrastructure and tools for training and deploying vision AI models.",
       "foundingDate": "2019",
-      "logo": "assets/logo-trackers-violet.svg",
+      "logo": "https://trackers.roboflow.com/latest/assets/logo-trackers-violet.svg",
       "sameAs": [
         "https://github.com/roboflow",
         "https://twitter.com/roboflow",
@@ -105,6 +106,8 @@
       "downloadUrl": "https://pypi.org/project/trackers/",
       "codeRepository": "https://github.com/roboflow/trackers",
       "programmingLanguage": "Python",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "softwareVersion": "2.7.0",
       "author": {
         "@id": "https://roboflow.com/#organization"
       },
@@ -156,10 +159,6 @@
     "@type": "WebPage",
     "@id": "https://trackers.roboflow.com/latest/"
   },
-  "image": {
-    "@type": "ImageObject",
-    "url": "https://trackers.roboflow.com/latest/assets/logo-trackers-violet.svg"
-  },
   "author": {
     "@type": "Organization",
     "@id": "https://roboflow.com/#organization",
@@ -181,7 +180,7 @@
       ".md-content p:first-of-type"
     ]
   },
-  "dateModified": "2026-11-05",
+  "dateModified": "2026-11-26",
   "datePublished": "2025-04-14"
 }
 </script>
@@ -199,15 +198,15 @@
       "name": "Which tracker should I use?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Start with ByteTrack — it performs best across two out of four benchmarks and handles variable-confidence detectors well. Use SORT if speed or device constraints require the lightest possible tracker. Use OC-SORT when camera motion is significant or objects follow non-linear paths."
+        "text": "Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters but requires optional SAM/Cutie mask dependencies; BoT-SORT is a strong choice when camera motion is significant; pass each frame or a precomputed camera-motion transform to enable compensation. Use SORT if speed or device constraints require the lightest possible tracker. See the tracker comparison for benchmark scores."
       }
     },
     {
       "@type": "Question",
-      "name": "What is multi-object tracking?",
+      "name": "What is multi-object tracking and how does it differ from object detection?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Multi-object tracking assigns a persistent ID to each detected object across video frames, maintaining continuity through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach: a detector runs on each frame, and the tracker links detections across time using motion models and spatial matching."
+        "text": "Object detection finds and classifies objects in a single image frame. Multi-object tracking assigns a persistent ID to each detected object across video frames, maintaining continuity through occlusions, re-entries, and camera motion. Trackers use a detect-then-track approach: a detector runs on each frame, and the tracker links detections across time using motion models and spatial matching."
       }
     },
     {
@@ -215,7 +214,7 @@
       "name": "Do I need a specific detector?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. Roboflow Trackers works with any detector that outputs supervision.Detections objects. The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2, and any custom model."
+        "text": "No. Roboflow Trackers works with any detector that outputs supervision.Detections objects. The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2, and any custom model. The tracker never inspects the detection model directly."
       }
     },
     {
@@ -223,7 +222,7 @@
       "name": "How do I evaluate my tracker?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Run trackers eval against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table."
+        "text": "Run trackers eval against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the evaluation guide for the full workflow."
       }
     },
     {
@@ -231,7 +230,7 @@
       "name": "What MOT datasets does the library support?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "MOT17 and SportsMOT are supported for download and evaluation. Use trackers download <dataset> to pull frames, annotations, and pre-computed detections. DanceTrack and SoccerNet-tracking support is coming soon."
+        "text": "MOT17 and SportsMOT are supported for download and evaluation. Use trackers download --name <dataset> to pull the assets available for that dataset and split: MOT17 ships frames, annotations, and pre-computed detections (test split has no annotations); SportsMOT ships frames and annotations only, with no pre-computed detections asset (test split has frames only). DanceTrack and SoccerNet-tracking support is coming soon. See the download guide for asset options."
       }
     }
   ]
@@ -2723,7 +2722,7 @@
 <p><strong>Which tracker should I use?</strong></p>
 <!-- BENCH-XREF derived-claim: "McByte leads HOTA on every benchmark at default parameters" depends on McByte being the bolded HOTA best in ALL FOUR [docs/evaluations/results.md](evaluations/results.md) Default tables (mot17/sportsmot/soccernet/dancetrack). If any Default table's HOTA leader changes, re-verify this sentence. -->
 
-<p>Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters but requires optional SAM/Cutie mask dependencies; BoT-SORT is the best lightweight option when camera motion is significant. Use SORT if speed or device constraints require the lightest possible tracker. See the <a href="evaluations/results/">tracker comparison</a> for benchmark scores.</p>
+<p>Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters but requires optional SAM/Cutie mask dependencies; BoT-SORT is a strong choice when camera motion is significant; pass each frame or a precomputed camera-motion transform to enable compensation. Use SORT if speed or device constraints require the lightest possible tracker. See the <a href="evaluations/results/">tracker comparison</a> for benchmark scores.</p>
 <p><strong>Do I need a specific detector?</strong></p>
 <p>No. Roboflow Trackers works with any detector that outputs <code>supervision.Detections</code> objects. The library ships example pipelines using RF-DETR but is compatible with YOLO, Detectron2, and any custom model. The tracker never inspects the detection model directly.</p>
 <p><strong>What MOT datasets does the library support?</strong></p>
@@ -2761,7 +2760,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="November 5, 2026 14:04:55 UTC">2026-11-05</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="November 26, 2026 16:25:26 UTC">2026-11-26</span>
   </span>
 
     
