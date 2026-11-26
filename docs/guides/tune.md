@@ -89,7 +89,7 @@ data
     └── ...
 ```
 
-Each sequence must exist in both directories with the same filename (`{sequence}.txt`).
+Each sequence must have matching names in both directories. Detections use `{sequence}.txt`; all selected ground-truth sequences must use the same layout: either `{sequence}.txt` or the `{sequence}/gt/gt.txt` layout of a downloaded dataset.
 
 Use MOT format lines:
 
@@ -273,7 +273,7 @@ All arguments accepted by `trackers tune`.
     </tr>
     <tr>
       <td><code>--gt_dir</code></td>
-      <td>Directory with ground-truth MOT files (<code>{sequence}.txt</code>).</td>
+      <td>Directory with ground-truth MOT files (<code>{sequence}.txt</code> or <code>{sequence}/gt/gt.txt</code>).</td>
       <td>—</td>
     </tr>
     <tr>

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -434,6 +435,10 @@ class SequenceResult:
 
         Returns:
             Formatted table string.
+
+        Warns:
+            UserWarning: If requested columns have no computed value. Invalid columns are skipped;
+                if none remain, the default columns are shown.
         """
         if columns is None:
             columns = _get_available_columns(
@@ -442,6 +447,7 @@ class SequenceResult:
                 has_identity=self.Identity is not None,
             )
 
+        columns = _select_columns([self], columns)
         return _format_sequence_table(self, columns)
 
 
@@ -502,6 +508,10 @@ class BenchmarkResult:
 
         Returns:
             Formatted table string.
+
+        Warns:
+            UserWarning: If requested columns have no computed value. Invalid columns are skipped;
+                if none remain, the default columns are shown.
         """
         if columns is None:
             columns = _get_available_columns(
@@ -510,6 +520,7 @@ class BenchmarkResult:
                 has_identity=self.aggregate.Identity is not None,
             )
 
+        columns = _select_columns([*self.sequences.values(), self.aggregate], columns)
         return _format_benchmark_table(self.sequences, self.aggregate, columns)
 
     def save(self, path: str | Path) -> None:
@@ -565,6 +576,32 @@ def _get_available_columns(has_clear: bool = False, has_hota: bool = False, has_
     return columns
 
 
+def _select_columns(results: list[SequenceResult], columns: list[str]) -> list[str]:
+    """Keep columns available in every result, warning when requested values are missing."""
+    available = [
+        set().union(
+            *(metrics.to_dict() for metrics in (result.CLEAR, result.HOTA, result.Identity) if metrics is not None)
+        )
+        for result in results
+    ]
+    missing = [column for column in columns if not all(column in fields for fields in available)]
+    if not missing:
+        return columns
+
+    warnings.warn(f"Skipping columns with no computed value: {', '.join(missing)}.", UserWarning, stacklevel=3)
+    selected = [column for column in columns if column not in missing]
+    if selected:
+        return selected
+
+    aggregate = results[-1]
+    defaults = _get_available_columns(
+        has_clear=aggregate.CLEAR is not None,
+        has_hota=aggregate.HOTA is not None,
+        has_identity=aggregate.Identity is not None,
+    )
+    return [column for column in defaults if all(column in fields for fields in available)]
+
+
 def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
     """Get metric value from a SequenceResult.
 
@@ -574,6 +611,9 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
 
     Returns:
         The metric value.
+
+    Raises:
+        ValueError: If no computed metric family has this column.
     """
     # Check CLEAR metrics
     if result.CLEAR is not None:
@@ -593,7 +633,7 @@ def _get_metrics_dict(result: SequenceResult, col: str) -> float | int:
         if col in identity_dict:
             return identity_dict[col]
 
-    return 0
+    raise ValueError(f"Column {col!r} has no computed value: check the name, or add its metric family to metrics.")
 
 
 def _format_value(value: float | int, is_float: bool) -> str:
