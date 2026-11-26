@@ -2002,6 +2002,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2061,7 +2078,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2100,7 +2117,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2172,7 +2189,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_2" class="md-nav__link">
+  <a href="#fixed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2255,7 +2272,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_3" class="md-nav__link">
+  <a href="#fixed_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2316,7 +2333,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_4" class="md-nav__link">
+  <a href="#fixed_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2366,7 +2383,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_5" class="md-nav__link">
+  <a href="#fixed_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2455,7 +2472,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_6" class="md-nav__link">
+  <a href="#fixed_7" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2664,6 +2681,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Unreleased">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔧 Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2723,7 +2757,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed" class="md-nav__link">
+  <a href="#fixed_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2762,7 +2796,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#fixed_1" class="md-nav__link">
+  <a href="#fixed_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2834,7 +2868,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_2" class="md-nav__link">
+  <a href="#fixed_3" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2917,7 +2951,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_3" class="md-nav__link">
+  <a href="#fixed_4" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -2978,7 +3012,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_4" class="md-nav__link">
+  <a href="#fixed_5" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -3028,7 +3062,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_5" class="md-nav__link">
+  <a href="#fixed_6" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -3117,7 +3151,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fixed_6" class="md-nav__link">
+  <a href="#fixed_7" class="md-nav__link">
     <span class="md-ellipsis">
       
         🔧 Fixed
@@ -3156,6 +3190,10 @@
 <p>All notable changes to this project are documented in this file.</p>
 <p>The format is based on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and this project adheres to <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
 <h2 id="unreleased"><a href="https://github.com/roboflow/trackers/compare/2.7.0...HEAD">Unreleased</a></h2>
+<h3 id="fixed">🔧 Fixed</h3>
+<ul>
+<li><strong>MOT and detection files saved with a UTF-8 byte order mark now load</strong> — <code>load_mot_file</code> (used by <code>trackers eval</code>, <code>trackers track</code>, the tuner and ReID calibration) and the detection-file reader behind <code>trackers benchmark</code> and <code>trackers inspect</code> read the mark that Excel's "CSV UTF-8" export and some Windows editors put at the start of a file as part of the first frame number, so a valid <code>gt.txt</code> or <code>det.txt</code> failed with <code>Invalid frame number</code> or <code>Could not parse detection line 1</code>. Both readers now open files as <code>utf-8-sig</code>, which drops a leading mark and reads every other UTF-8 file unchanged.</li>
+</ul>
 <h2 id="270-2026-11-05"><a href="https://github.com/roboflow/trackers/compare/2.6.1...2.7.0">2.7.0</a> — 2026-11-05</h2>
 <h3 id="added">🚀 Added</h3>
 <ul>
@@ -3231,7 +3269,7 @@
 <p><strong>MOT ground-truth class handling is configurable during evaluation preprocessing</strong> — scored and distractor classes now come from a <code>MOTClassConfig</code> (the <code>mot17</code> default, a <code>mot20</code> preset that treats class 6 as a distractor, or a custom config) instead of hard-coded MOT17 constants. Default MOT17 behavior is unchanged. The config is accepted as <code>class_config</code> by <code>evaluate_mot_sequence</code> and <code>evaluate_mot_sequences</code> (default <code>"mot17"</code>) and as <code>--class_config</code> on <code>trackers eval</code>, and a <code>UserWarning</code> fires when a MOT20 sequence is scored with the <code>mot17</code> preset (<a href="https://github.com/roboflow/trackers/pull/597">#597</a>, <a href="https://github.com/roboflow/trackers/pull/598">#598</a>).</p>
 </li>
 </ul>
-<h3 id="fixed">🔧 Fixed</h3>
+<h3 id="fixed_1">🔧 Fixed</h3>
 <ul>
 <li><strong>Evaluation rejects unknown metric families before file I/O</strong> — use <code>CLEAR</code>, <code>HOTA</code>, or <code>Identity</code>; the single-sequence path no longer silently returns empty metrics for unsupported names (<a href="https://github.com/roboflow/trackers/pull/598">#598</a>).</li>
 <li><strong><code>evaluate_mot_sequences</code> no longer discovers hidden directories as MOT-layout sequences</strong> — the hidden-entry filter in sequence discovery tested <code>p.name</code>, which is always <code>gt.txt</code> for the <code>&lt;seq&gt;/gt/gt.txt</code> layout, so it never excluded anything. A hidden directory next to the sequences that contains a <code>gt/gt.txt</code>, such as a hidden copy of a sequence left by a backup or sync tool, was evaluated as a sequence, and because no prediction file matches it the whole benchmark aborted with <code>FileNotFoundError: Tracker file not found: .../.MOT17-02-backup.txt</code>. The check now tests the sequence directory name, matching the flat layout, which filtered correctly all along. A MOT-layout sequence directory whose own name starts with <code>.</code> is therefore no longer discovered; list it in a <code>seqmap</code> to evaluate it. Layout detection now skips hidden files too, so a hidden <code>.txt</code> file at the root of a MOT-layout <code>gt_dir</code> no longer selects the flat layout and fails with <code>ValueError: No sequences found</code>. Discovery of non-hidden sequences is unchanged.</li>
@@ -3247,7 +3285,7 @@
 <li>Updated development/documentation dependency locks, pre-commit hooks and GitHub Actions; build CI now selects Python 3.12. This is a build-job choice, not a Python minimum increase (<a href="https://github.com/roboflow/trackers/pull/625">#625</a>, <a href="https://github.com/roboflow/trackers/pull/648">#648</a>). No new security fix is claimed solely from dependency bump subjects.</li>
 </ul>
 <h2 id="261"><a href="https://github.com/roboflow/trackers/compare/2.6.0...2.6.1">2.6.1</a></h2>
-<h3 id="fixed_1">🔧 Fixed</h3>
+<h3 id="fixed_2">🔧 Fixed</h3>
 <ul>
 <li><strong><code>GIoU</code> no longer scores a malformed box above <code>0</code></strong> — <code>_compute_iou_and_enclosing</code> computed box area as <code>(x2 - x1) * (y2 - y1)</code> without clamping, so a box inverted on both axes contributed a spuriously positive area: two negative extents multiply to a positive product. That inflated the union past the enclosing area and flipped GIoU's <code>(enclosing - union) / enclosing</code> penalty into a bonus, driving scores far outside GIoU's documented <code>[-1, 1]</code> range (over <code>+29</code> on random malformed input) so that a degenerate box could outrank a genuine match. Box extents are now clamped at zero exactly as the intersection already was. Affects <code>GIoU</code> only: <code>IoU</code>/<code>BIoU</code> do not use this helper, and <code>DIoU</code>/<code>CIoU</code> are byte-identical because a malformed axis already forces the intersection to zero. Reachable when a tracker is constructed with <code>iou=GIoU()</code> — <code>SORTTracker</code>'s default <code>XYXYStateEstimator</code> has an unconstrained velocity and no downstream box clamp, though every tracker exposing an <code>iou</code> parameter defaults to plain <code>IoU()</code>, and <code>CBIoUTracker</code> exposes none. Results for well-formed boxes are bit-identical.</li>
 <li><strong>OC-SORT now returns low-confidence detections with <code>tracker_id=-1</code></strong> — detections below <code>high_conf_det_threshold</code> were previously dropped silently instead of being emitted, unlike <code>SORTTracker</code>/<code>ByteTrackTracker</code>. <code>update()</code> now returns one row per input detection, matching the documented contract. Output-contract change: callers may now see additional <code>tracker_id == -1</code> rows (<a href="https://github.com/roboflow/trackers/pull/566">#566</a>).</li>
@@ -3278,7 +3316,7 @@
 <li><strong>Improved tracker performance</strong> (bit-identical output) — CMC's sparse optical-flow status-mask filtering vectorized (~24x faster for that operation); <code>KalmanMotionModel</code> now caches its transition/noise matrices and defers DWNA calibration (~38% lower BoT-SORT/CBIoU predict cost); predicted boxes cached across association stages in BoT-SORT/CBIoU; Kalman-state-estimator copies trimmed and OC-SORT association hygiene improved (<a href="https://github.com/roboflow/trackers/pull/522">#522</a>, <a href="https://github.com/roboflow/trackers/pull/527">#527</a>, <a href="https://github.com/roboflow/trackers/pull/528">#528</a>).</li>
 <li>Direct dependency constraint <code>pydeprecate&gt;=0.7.0</code> raised to <code>&gt;=0.8.0</code>; build backend migrated from <code>hatchling</code> to <code>setuptools</code> (<code>src</code>-layout discovery + <code>py.typed</code> support) (<a href="https://github.com/roboflow/trackers/pull/492">#492</a>).</li>
 </ul>
-<h3 id="fixed_2">🔧 Fixed</h3>
+<h3 id="fixed_3">🔧 Fixed</h3>
 <ul>
 <li><strong>Positive low-FPS lost-track buffers no longer collapse to zero frames</strong> — all trackers now scale positive <code>lost_track_buffer</code> values with <code>ceil(...)</code> and keep confirmed tracks alive through exactly the scaled number of missed frames, matching OC-SORT's previous inclusive boundary semantics (<a href="https://github.com/roboflow/trackers/pull/420">#420</a>).</li>
 <li><strong>BoT-SORT / CBIoU: instant-activated first-frame tracks no longer dropped on a single miss</strong> — sticky maturity now triggers once a real <code>tracker_id</code> is assigned (<code>tracker_id != -1</code>), matching ByteTrack; fixes a default-config ID switch when a frame-1 object is missed once (<a href="https://github.com/roboflow/trackers/pull/478">#478</a> BoT-SORT, <a href="https://github.com/roboflow/trackers/pull/504">#504</a> CBIoU).</li>
@@ -3324,7 +3362,7 @@
 <li><strong><code>BoTSORTTracklet.apply_cmc</code> delegates to <code>CMC.apply_batch</code></strong> — per-track and batch paths now share identical code; behaviour is unchanged (<a href="https://github.com/roboflow/trackers/pull/414">#414</a>).</li>
 <li><strong><code>Tuner</code> gains <code>enqueue_defaults</code>, <code>fixed_params</code>, <code>images_dir</code>, <code>seed</code></strong> — <code>enqueue_defaults=True</code> (default) evaluates a baseline trial using each param's <code>__init__</code> default before Optuna samples; <code>fixed_params</code> holds selected params constant across all trials; <code>images_dir</code> enables frame loading for CMC-enabled trackers; <code>seed</code> makes TPE sampling reproducible (<a href="https://github.com/roboflow/trackers/pull/427">#427</a>).</li>
 </ul>
-<h3 id="fixed_3">🔧 Fixed</h3>
+<h3 id="fixed_4">🔧 Fixed</h3>
 <ul>
 <li>Clarified in docs that <code>SORTTracker</code> itself is not deprecated — only the <code>.trackers</code> alias is.</li>
 <li><strong>BoT-SORT score fusion with signed IoU</strong> — <code>_fuse_score</code> multiplied raw negative IoU values by confidence, inverting track ranking for GIoU/DIoU/CIoU; <code>normalize_for_fusion</code> now normalises similarity before fusion (<a href="https://github.com/roboflow/trackers/pull/403">#403</a>).</li>
@@ -3367,7 +3405,7 @@
 <li><strong>Eval submodule</strong> uses lazy <code>__getattr__</code> for <code>evaluate_mot_sequence</code> and <code>evaluate_mot_sequences</code> to avoid circular imports.</li>
 <li>Documentation: rewrote landing page, install guide, evaluate guide, ByteTrack page, comparison page; added DanceTrack default tuned numbers.</li>
 </ul>
-<h3 id="fixed_4">🔧 Fixed</h3>
+<h3 id="fixed_5">🔧 Fixed</h3>
 <ul>
 <li><strong>ByteTrack: prune unmatched tracks correctly</strong> after the Kalman refactor — <code>time_since_update</code> advances on unmatched tracks and <code>_get_alive_tracklets</code> expires them after <code>lost_track_buffer</code> empty frames (<a href="https://github.com/roboflow/trackers/pull/376">#376</a>).</li>
 <li><strong>Documentation index ByteTrack correction</strong> (<a href="https://github.com/roboflow/trackers/pull/371">#371</a>).</li>
@@ -3388,7 +3426,7 @@
 <li><strong>Documentation rewrite</strong> — landing page, install guide, and evaluate pages comprehensively rewritten; tracker comparison page expanded with dataset videos, paper links, and a DanceTrack section (<a href="https://github.com/roboflow/trackers/pull/322">#322</a>).</li>
 <li><strong>Release and stable branching strategy adopted</strong> — repository now follows a <code>release/stable</code> branching model (<a href="https://github.com/roboflow/trackers/pull/275">#275</a>).</li>
 </ul>
-<h3 id="fixed_5">🔧 Fixed</h3>
+<h3 id="fixed_6">🔧 Fixed</h3>
 <ul>
 <li><strong>Evaluation distractor filtering</strong> corrected on the comparison numbers (<a href="https://github.com/roboflow/trackers/pull/322">#322</a>).</li>
 <li><strong>PyPI publish action pinned to verified SHA</strong> — <code>pypa/gh-action-pypi-publish</code> corrected to the actual v1.13.0 commit SHA (<a href="https://github.com/roboflow/trackers/pull/294">#294</a>).</li>
@@ -3422,7 +3460,7 @@
 <li><strong>DeepSort removed</strong> — <code>DeepSortTracker</code> and all associated REID infrastructure removed from the package, docs, tests, and CI workflows. Projects using DeepSort must pin to <code>&lt;2.1.0</code>.</li>
 <li><strong>Python 3.9 dropped</strong> — minimum supported version is now Python 3.10; type annotations updated to use built-in generics (<code>list[...]</code>, <code>dict[...]</code>) throughout the public API (<a href="https://github.com/roboflow/trackers/pull/200">#200</a>).</li>
 </ul>
-<h3 id="fixed_6">🔧 Fixed</h3>
+<h3 id="fixed_7">🔧 Fixed</h3>
 <ul>
 <li><strong>Documentation build</strong> — pinned <code>mkdocstrings-python&lt;2.0.0</code> to resolve docs generation failure.</li>
 </ul>
