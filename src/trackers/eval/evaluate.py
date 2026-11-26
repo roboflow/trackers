@@ -29,7 +29,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.io.mot import _prepare_mot_sequence, load_mot_file
+from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,26 @@ SUPPORTED_METRICS = ["CLEAR", "HOTA", "Identity"]
 
 #: Sequence-name prefix of the MOT20 benchmark, whose ground truth needs the `mot20` class preset.
 _MOT20_SEQUENCE_PREFIX = "MOT20-"
+
+
+def _load_predictions(path: str | Path) -> dict[int, _MOTFrameData]:
+    """Load a tracker's MOT results, reading a file with no rows as a tracker that output nothing.
+
+    `trackers track` writes such a file for a video with no tracks, and it is a valid result that scores zero.
+    A ground-truth file with no rows stays an error in `load_mot_file`.
+
+    Args:
+        path: Path to the tracker's MOT format text file.
+
+    Returns:
+        Dictionary mapping frame numbers to the tracker's detections, empty if the file has no rows.
+    """
+    path = Path(path)
+    if path.exists():
+        with open(path) as f:
+            if not any(line.strip() for line in f):
+                return {}
+    return load_mot_file(path)
 
 
 def evaluate_mot_sequence(
@@ -74,8 +94,9 @@ def evaluate_mot_sequence(
 
     Raises:
         FileNotFoundError: If `gt_path` or `tracker_path` does not exist.
-        ValueError: If an unsupported metric family is requested, or if `class_config` is neither a supported
-            preset name nor a `MOTClassConfig`.
+        ValueError: If an unsupported metric family is requested, if `class_config` is neither a supported
+            preset name nor a `MOTClassConfig`, or if a ground-truth row not marked ignored has a class below 1
+            that `class_config` does not name.
 
     Examples:
         >>> from trackers.eval import evaluate_mot_sequence  # doctest: +SKIP
@@ -161,10 +182,10 @@ def _evaluate_mot_sequence_resolved(
     """
     # Load data
     gt_data = load_mot_file(gt_path)
-    tracker_data = load_mot_file(tracker_path)
+    tracker_data = _load_predictions(tracker_path)
 
     # Prepare sequence (compute IoU, remap IDs)
-    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config)
+    seq_data = _prepare_mot_sequence(gt_data, tracker_data, class_config=class_config, ground_truth_path=gt_path)
 
     # Compute metrics
     clear_metrics: CLEARMetrics | None = None
@@ -282,8 +303,9 @@ def evaluate_mot_sequences(
 
     Raises:
         FileNotFoundError: If `gt_dir` or `tracker_dir` does not exist.
-        ValueError: If no sequences are found, if an unsupported metric family is requested, or if `class_config`
-            is neither a supported preset name nor a `MOTClassConfig`.
+        ValueError: If no sequences are found, if an unsupported metric family is requested, if `class_config`
+            is neither a supported preset name nor a `MOTClassConfig`, or if a ground-truth row not marked ignored
+            has a class below 1 that `class_config` does not name.
 
     Examples:
         Auto-detect layout and evaluate all sequences:
@@ -315,14 +337,11 @@ def evaluate_mot_sequences(
     if not tracker_dir.exists():
         raise FileNotFoundError(f"Tracker directory not found: {tracker_dir}")
 
-    # Detect directory format
-    data_format = _detect_format(gt_dir)
+    sequences = _parse_seqmap(seqmap) if seqmap is not None else None
+    data_format = _detect_format(gt_dir, sequences)
     logger.info("Detected format: %s", data_format)
 
-    # Get sequence list
-    if seqmap is not None:
-        sequences = _parse_seqmap(seqmap)
-    else:
+    if sequences is None:
         sequences = _discover_sequences(gt_dir, data_format)
 
     if not sequences:
@@ -414,16 +433,24 @@ def _warn_if_mot20_sequences_use_mot17_config(sequence_names: Iterable[str], cla
     )
 
 
-def _detect_format(gt_dir: Path) -> Literal["flat", "mot"]:
+def _detect_format(gt_dir: Path, sequences: list[str] | None = None) -> Literal["flat", "mot"]:
     """Auto-detect directory format.
 
     Args:
         gt_dir: Ground truth directory (direct parent of sequences).
+        sequences: Selected sequence names, when known.
 
     Returns:
-        "flat" if .txt files exist in gt_dir, "mot" if sequence
-        subdirectories with gt/gt.txt exist.
+        Detected layout, preferring selected sequences over unrelated files when names are supplied.
     """
+    # When names are known, unrelated text files must not override the selected sequences' layout.
+    # Keep flat precedence when both layouts contain a selected sequence.
+    if sequences is not None:
+        if any((gt_dir / f"{seq}.txt").is_file() for seq in sequences):
+            return "flat"
+        if any((gt_dir / seq / "gt" / "gt.txt").is_file() for seq in sequences):
+            return "mot"
+
     # Check for flat format (*.txt files directly in gt_dir). Hidden files are skipped as
     # `_discover_sequences` skips them, so a stray `.notes.txt` cannot select the flat layout.
     txt_files = [p for p in gt_dir.glob("*.txt") if not p.name.startswith(".")]
