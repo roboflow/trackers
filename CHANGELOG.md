@@ -16,6 +16,8 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 
 ### 🔧 Fixed
 
+- **Evaluation tables no longer show uncomputed columns as zero** — unavailable or misspelled columns are skipped with a warning naming them. Valid requested columns remain visible, and if none are valid the table uses available default columns. `trackers eval --output` still saves computed results ([#660](https://github.com/roboflow/trackers/pull/660)).
+
 - **`trackers eval` scores a results file with no rows as a tracker that output nothing** — a sequence where `trackers track` found no tracks writes such a file, and it used to raise `ValueError` and abort the whole benchmark. It now counts every scored ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error ([#659](https://github.com/roboflow/trackers/pull/659)).
 
 - **MOT and detection files saved with a UTF-8 byte order mark now load** — `load_mot_file` (used by `trackers eval`, `trackers track`, the tuner and ReID calibration) and the detection-file reader behind `trackers benchmark` and `trackers inspect` read the mark that Excel's "CSV UTF-8" export and some Windows editors put at the start of a file as part of the first frame number, so a valid `gt.txt` or `det.txt` failed with `Invalid frame number` or `Could not parse detection line 1`. Both readers now open files as `utf-8-sig`, which drops a leading mark and reads every other UTF-8 file unchanged.
