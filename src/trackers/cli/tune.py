@@ -59,7 +59,7 @@ def tune_command(
 
     Args:
         tracker: Tracking algorithm selection.
-        gt_dir: Directory of ground-truth MOT files.
+        gt_dir: Directory of ground-truth MOT files, as ``{seq}.txt`` or ``{seq}/gt/gt.txt``.
         detections_dir: Directory of pre-computed detection files in MOT flat
             format (one ``{seq}.txt`` per sequence).
         objective: Scalar metric to maximise. Options: ``MOTA``, ``HOTA``,

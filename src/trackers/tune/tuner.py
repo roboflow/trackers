@@ -19,10 +19,11 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.eval.evaluate import evaluate_mot_sequences
+from trackers.eval.evaluate import _detect_format, _get_ground_truth_path, evaluate_mot_sequences
+from trackers.eval.mot_classes import resolve_mot_class_config
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
-from trackers.io.mot import _mot_frame_to_detections, _MOTOutput, load_mot_file
+from trackers.io.mot import _check_ground_truth_classes, _mot_frame_to_detections, _MOTOutput, load_mot_file
 from trackers.reid.encoder import _load_reid_encoder
 
 if TYPE_CHECKING:
@@ -100,7 +101,7 @@ class Tuner:
 
     Args:
         tracker_id: Registered tracker identifier (e.g. ``"bytetrack"``).
-        gt_dir: Directory of ground-truth MOT files.
+        gt_dir: Directory of ground-truth MOT files, as ``{seq}.txt`` or ``{seq}/gt/gt.txt``.
         detections_dir: Directory of pre-computed detection files in MOT
             format — one ``{seq}.txt`` per sequence, where each line must
             contain at least ``<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,
@@ -327,13 +328,14 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        missing_gt_files = [
-            str(self._gt_dir / f"{seq_name}.txt")
-            for seq_name in self._sequences
-            if not (self._gt_dir / f"{seq_name}.txt").is_file()
-        ]
+        missing_gt_files = [str(gt_path) for gt_path in self._ground_truth_paths() if not gt_path.is_file()]
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
+
+    def _ground_truth_paths(self) -> list[Path]:
+        """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout."""
+        gt_format = _detect_format(self._gt_dir, self._sequences)
+        return [_get_ground_truth_path(self._gt_dir, seq, gt_format) for seq in self._sequences]
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
@@ -405,6 +407,10 @@ class Tuner:
             with ``fixed_params`` so the result can be passed directly to the
             tracker constructor.
         """
+        class_config = resolve_mot_class_config("mot17")
+        for gt_path in self._ground_truth_paths():
+            _check_ground_truth_classes(load_mot_file(gt_path), class_config, gt_path)
+
         self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
         if self._default_trial_params is not None:
             # Only enqueue tunable keys; fixed_params are applied in _build_tracker and

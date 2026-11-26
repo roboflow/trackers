@@ -108,7 +108,7 @@ def read_detection_file(
     minimum_columns = 7 if is_tlwh else 6
     grouped: dict[int, list[DetectionRecord]] = defaultdict(list)
 
-    with det_file.open("r", encoding="utf-8") as handle:
+    with det_file.open("r", encoding="utf-8-sig") as handle:
         for line_number, raw_line in enumerate(handle, start=1):
             line = raw_line.strip()
             if not line:
