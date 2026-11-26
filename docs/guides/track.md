@@ -487,7 +487,7 @@ Most `--tracker.*` flags default to `null` on the CLI — leaving a flag unset m
     </tr>
     <tr>
       <td><code>--tracker.iou_variant</code></td>
-      <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>. Applies to all trackers.</td>
+      <td>IoU similarity metric for data association. Options: <code>iou</code>, <code>giou</code>, <code>diou</code>, <code>ciou</code>, <code>biou</code>. Applies to trackers with an <code>iou</code> parameter; <code>cbiou</code> uses its own buffered IoU, warns and ignores it.</td>
       <td><code>iou</code></td>
     </tr>
     <tr>
