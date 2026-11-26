@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -40,6 +41,42 @@ class BaseTracklet(ABC):
             bbox: Bounding box `[x1, y1, x2, y2]`.
         """
         pass
+
+    @staticmethod
+    def update_batch(tracklets: Sequence[BaseTracklet], bboxes: Sequence[np.ndarray]) -> None:
+        """Apply this frame's observations to a batch of matched tracklets.
+
+        The Kalman filter steps are batched across tracklets, which is where most of the
+        per-frame tracking time goes; the per-tracklet bookkeeping (miss clocks, hit
+        counters) stays in :meth:`mark_updated`.
+
+        Args:
+            tracklets: Tracklets matched to a detection on this frame.
+            bboxes: The matching bounding box per tracklet, ``[x1, y1, x2, y2]``.
+        """
+        if len(tracklets) != len(bboxes):
+            raise ValueError("tracklets and bboxes must have the same length")
+        if not tracklets:
+            return
+        # Only tracklet updates explicitly paired with mark_updated can safely bypass update().
+        if any(
+            getattr(type(tracklet), "_batch_update_method", None) is not type(tracklet).update for tracklet in tracklets
+        ):
+            for tracklet, bbox in zip(tracklets, bboxes):
+                tracklet.update(bbox)
+            return
+        BaseStateEstimator.update_batch([tracklet.state_estimator for tracklet in tracklets], bboxes)
+        for tracklet in tracklets:
+            tracklet.mark_updated()
+
+    def mark_updated(self) -> None:
+        """Record that this tracklet has just consumed an observation.
+
+        Called right after the state estimator was advanced — by `update` for a single tracklet, or by a batched
+        estimator update for many at once. Subclasses extend this to bump their own consecutive-update counter.
+        """
+        self.time_since_update = 0
+        self.time_since_update_seconds = 0.0
 
     def _advance_miss_clocks(self, timing: PredictTiming) -> None:
         """Advance miss counters by one step.
