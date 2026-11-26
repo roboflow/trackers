@@ -28,6 +28,7 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 
 - _Fixed:_ **CMC no longer swaps the corner velocities of a shrinking `XYXYStateEstimator` box** — `_warp_kalman_states` sorted XYXY velocities per axis, so with `BoTSORTTracker`, `McByteTracker` or `OCSORTTracker` on the non-default XYXY estimator, every CMC step, even an identity transform, swapped a shrinking box's velocities and the filter predicted it growing. Velocities are no longer sorted: each is mapped through the linear part and stays with the corner that becomes the new edge, so for an upright box a warped velocity equals the motion of the warped box as long as one step does not invert the box. ([#662](https://github.com/roboflow/trackers/pull/662))
 - _Fixed:_ **`MotionAwareTraceAnnotator` preserves offscreen trajectory segments** — consecutive projected points are drawn as paths with gaps only for non-finite points, instead of dropping offscreen points and drawing shortcuts; far thick segments are clipped to the frame plus stroke margin ([#667](https://github.com/roboflow/trackers/pull/667)).
+- _Fixed:_ **CMC propagates the `XYXYStateEstimator` covariance with the corner swap** — when an axis-aligned transform reflected the frame, or the stored box was inverted, the corner states and velocities were relabelled but the covariance stayed on the original indices, so variances sat on the wrong edge and the Kalman gain was off. The covariance is now conjugated by the same corner map. Symmetric covariances, upright boxes and centre-based estimators are unchanged, so built-in trackers with CMC off see no difference; a float32 near-identity matrix with a small negative off-diagonal residual changes covariance cross terms by at most 3e-3 on entries up to 1e4. Rotation and shear still leave the covariance frozen while the state is warped ([#678](https://github.com/roboflow/trackers/pull/678)).
 
 ### Evaluation
 
@@ -35,11 +36,13 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 - _Fixed:_ **Evaluation tables no longer show uncomputed columns as zero** — unavailable or misspelled columns are skipped with a warning naming them. Valid requested columns remain visible, and if none are valid the table uses available default columns. `trackers eval --output` still saves computed results ([#660](https://github.com/roboflow/trackers/pull/660)).
 - _Fixed:_ **`trackers eval` scores a results file with no rows as a tracker that output nothing** — a sequence where `trackers track` found no tracks writes such a file, and it used to raise `ValueError` and abort the whole benchmark. It now counts every scored ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error ([#659](https://github.com/roboflow/trackers/pull/659)).
 - _Fixed:_ **`evaluate_mot_sequences(..., seqmap=...)` resolves the layout from the selected sequences** — a seqmap file stored inside `gt_dir` no longer forces the flat layout; the map file and aliases are excluded, and the other layout is used when only it contains every selected sequence ([#668](https://github.com/roboflow/trackers/pull/668)).
+- _Fixed:_ **A byte order mark no longer breaks empty results files or seqmaps** — a results file holding only a UTF-8 byte order mark made `evaluate_mot_sequence` raise `No valid data found` instead of scoring the sequence as having no predictions, because the emptiness check and the loader decoded the same bytes differently. A seqmap starting with a byte order mark put the mark into its first entry, so a header row was not recognised and the first sequence was looked up under a name with the mark. Both now read as UTF-8 with the mark ignored. An empty ground-truth file still raises. A seqmap in a legacy code page with non-ASCII characters is now decoded as UTF-8 and can raise `UnicodeDecodeError` ([#678](https://github.com/roboflow/trackers/pull/678)).
 
 ### Tuning
 
 - _Fixed:_ **`Tuner` accepts MOT-layout ground truth** — `{seq}/gt/gt.txt` as well as flat `{seq}.txt`, using the same layout detection as evaluation. The `gt_dir` docs are updated, and the CI test job now installs `--extra tune` so tuner tests run ([#563](https://github.com/roboflow/trackers/pull/563)).
 - _Fixed:_ **`Tuner` skips hidden files when discovering detection sequences** without a `seqmap`, such as macOS `._MOT17-02.txt` files ([#675](https://github.com/roboflow/trackers/pull/675)).
+- _Fixed:_ **`Tuner` handles a seqmap kept in `gt_dir`** — a seqmap stored in the ground-truth folder under the name of a selected sequence was parsed as ground truth and aborted the study with `Invalid MOT format`. The preflight now reports it as missing ground truth, each trial passes the caller's seqmap to the evaluation instead of a temporary copy, and a seqmap saved with a byte order mark keeps its first sequence name. The seqmap is read again on every trial, so editing it during a study can change the scored set ([#678](https://github.com/roboflow/trackers/pull/678)).
 
 ### CLI
 
@@ -55,6 +58,7 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 
 - **runtime dependency floor `pydeprecate>=0.12.0`** — was `>=0.8.0`; McByte deprecation shims now pass `message_template` ([#676](https://github.com/roboflow/trackers/pull/676)).
 - _Fixed:_ **docs site structured data (JSON-LD) corrected** — docs-only, no package change ([#584](https://github.com/roboflow/trackers/pull/584)).
+- _Fixed:_ **docs match current behaviour** — the tuning guide says ground-truth class values below 1 are rejected and no `-1` belongs there, the McByte rows describe mask-conditioned association as enabled only when the mask manager is on, `iou_variant` is documented as ignored by C-BIoU, `trackers eval` is documented as scoring CLEAR by default, and the evaluation guide covers skipped columns and empty results files. Docs-only, no package change ([#678](https://github.com/roboflow/trackers/pull/678)).
 
 ## [2.7.0] — 2026-11-05
 
