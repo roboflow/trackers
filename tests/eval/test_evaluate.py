@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from trackers.cli.eval import eval_command
 from trackers.eval import evaluate_mot_sequence, evaluate_mot_sequences
 from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset
 
@@ -278,6 +279,66 @@ class TestEvaluateUnusedClassColumn:
             evaluate_mot_sequences(gt_dir, tracker_dir)
 
 
+class TestEvaluateEmptyPredictions:
+    """A tracker that output nothing scores zero instead of aborting the evaluation."""
+
+    GT = "1,1,10,10,30,30,1,1,1\n1,2,60,10,30,30,1,1,1\n2,1,12,10,30,30,1,1,1\n"
+
+    @pytest.mark.parametrize("content", ["", "\n", "  \n\n"], ids=["empty", "newline", "blank-lines"])
+    def test_sequence_with_no_predictions_scores_zero(self, tmp_path: Path, content: str) -> None:
+        """Every ground-truth box is a miss, and every metric is zero."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text(self.GT)
+        tracker_path.write_text(content)
+
+        result = evaluate_mot_sequence(gt_path, tracker_path, metrics=["CLEAR", "HOTA", "Identity"])
+
+        assert result.CLEAR is not None
+        assert result.HOTA is not None
+        assert result.Identity is not None
+        assert result.CLEAR.CLR_TP == 0
+        assert result.CLEAR.CLR_FP == 0
+        assert result.CLEAR.CLR_FN == 3
+        assert result.CLEAR.MOTA == 0
+        assert result.HOTA.HOTA == 0
+        assert result.Identity.IDF1 == 0
+
+    def test_one_empty_sequence_does_not_abort_the_benchmark(self, tmp_path: Path) -> None:
+        """The other sequences are still scored, and the misses reach the aggregate."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "pred"
+        tracker_dir.mkdir()
+        for name, predictions in (("seq-a", self.GT.replace(",1,1,1\n", ",0.9,-1,-1,-1\n")), ("seq-b", "")):
+            (gt_dir / name / "gt").mkdir(parents=True)
+            (gt_dir / name / "gt" / "gt.txt").write_text(self.GT)
+            (tracker_dir / f"{name}.txt").write_text(predictions)
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.CLR_TP == 3
+        assert result.aggregate.CLEAR.CLR_FN == 3
+
+    def test_empty_ground_truth_stays_an_error(self, tmp_path: Path) -> None:
+        """Only predictions may be empty: no ground truth means there is nothing to score."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text("")
+        tracker_path.write_text(self.GT)
+
+        with pytest.raises(ValueError, match="empty"):
+            evaluate_mot_sequence(gt_path, tracker_path)
+
+    def test_missing_predictions_stay_an_error(self, tmp_path: Path) -> None:
+        """A results file that doesn't exist isn't a tracker that output nothing."""
+        gt_path = tmp_path / "gt.txt"
+        gt_path.write_text(self.GT)
+
+        with pytest.raises(FileNotFoundError):
+            evaluate_mot_sequence(gt_path, tmp_path / "missing.txt")
+
+
 class TestEvaluateMOTSequencesClassConfig:
     """`class_config` passed to `evaluate_mot_sequences` must reach the per-sequence scoring."""
 
@@ -355,6 +416,29 @@ class TestEvaluateMOTSequencesDiscovery:
     """Sequence discovery must ignore hidden entries in both supported layouts."""
 
     @pytest.mark.parametrize(
+        "gt_relpath",
+        [
+            pytest.param("sequence1.txt", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", id="mot-layout"),
+        ],
+    )
+    def test_seqmap_inside_ground_truth_root_preserves_layout(self, tmp_path: Path, gt_relpath: str) -> None:
+        """A sequence map next to ground truth does not select the wrong layout."""
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / gt_relpath
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        seqmap = gt_dir / "seqmap.txt"
+        seqmap.write_text("name\nsequence1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    @pytest.mark.parametrize(
         ("gt_relpath", "hidden_relpath", "hidden_sequence"),
         [
             pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
@@ -427,3 +511,84 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
 
         assert list(result.sequences) == [".5"]
+
+
+class TestTableColumns:
+    """Tables warn about unavailable columns while preserving computed output."""
+
+    @pytest.fixture
+    def benchmark_dirs(self, tmp_path: Path) -> tuple[Path, Path]:
+        """Create flat-layout GT and tracker directories holding one perfectly tracked sequence."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "trackers"
+        gt_dir.mkdir()
+        tracker_dir.mkdir()
+        (gt_dir / "sequence1.txt").write_text("1,1,10,10,20,20,1,1\n")
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        return gt_dir, tracker_dir
+
+    @pytest.mark.parametrize(
+        ("columns", "missing"),
+        [
+            pytest.param(["MOTA", "HOTA"], "HOTA", id="uncomputed-family"),
+            pytest.param(["MOTA", "IDSw"], "IDSw", id="misspelled"),
+            pytest.param(["MOTA", "HOTA", "IDSw"], "HOTA, IDSw", id="multiple-invalid"),
+        ],
+    )
+    def test_sequence_table_warns_and_keeps_valid_columns(
+        self, sample_mot_files: tuple[Path, Path], columns: list[str], missing: str
+    ) -> None:
+        """Unavailable columns are named together while computed values remain visible."""
+        result = evaluate_mot_sequence(*sample_mot_files, metrics=["CLEAR"])
+
+        with pytest.warns(UserWarning, match=missing):
+            rows = result.table(columns=columns).splitlines()
+
+        assert rows[0].split() == ["Sequence", "MOTA"]
+        assert rows[-1].split()[-1] == "100.000"
+
+    def test_benchmark_table_falls_back_when_all_columns_are_invalid(self, benchmark_dirs: tuple[Path, Path]) -> None:
+        """An entirely invalid selection falls back to the available default columns."""
+        result = evaluate_mot_sequences(*benchmark_dirs, metrics=["CLEAR"])
+
+        with pytest.warns(UserWarning, match="IDSw"):
+            table = result.table(columns=["IDSw"])
+
+        assert table == result.table()
+
+    def test_table_keeps_real_values_for_computed_columns(self, benchmark_dirs: tuple[Path, Path]) -> None:
+        """Columns from every requested family still render, including a genuine score."""
+        result = evaluate_mot_sequences(*benchmark_dirs, metrics=["CLEAR", "HOTA", "Identity"])
+
+        rows = result.table(columns=["MOTA", "HOTA", "IDF1", "IDSW"]).splitlines()
+
+        assert rows[-1].split() == ["COMBINED", "100.000", "100.000", "100.000", "0"]
+
+    @pytest.mark.parametrize("benchmark", [False, True])
+    def test_cli_saves_results_when_a_column_is_unavailable(
+        self,
+        sample_mot_files: tuple[Path, Path],
+        benchmark_dirs: tuple[Path, Path],
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        benchmark: bool,
+    ) -> None:
+        """Both CLI modes warn, render valid metrics, and save the computed JSON."""
+        output = tmp_path / "results.json"
+        gt_path, tracker_path = sample_mot_files
+        gt_dir, tracker_dir = benchmark_dirs
+        with pytest.warns(UserWarning, match="HOTA"):
+            exit_code = eval_command(
+                gt=None if benchmark else gt_path,
+                predictions=None if benchmark else tracker_path,
+                gt_dir=gt_dir if benchmark else None,
+                predictions_dir=tracker_dir if benchmark else None,
+                columns=["MOTA", "HOTA"],
+                output=output,
+            )
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "MOTA" in captured.out
+        assert "HOTA" not in captured.out
+        assert output.exists()

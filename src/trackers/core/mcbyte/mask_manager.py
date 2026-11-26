@@ -51,7 +51,7 @@ __all__ = ["MaskManager"]
     num_warns=-1,
     # Spelled out because pyDeprecate's built-in template names the class only,
     # which does not tell the reader which import to fix.
-    template_mgs=(
+    message_template=(
         "The `trackers.core.mcbyte.mask_manager.%(source_name)s` was deprecated since v%(deprecated_in)s"
         " in favor of `%(target_path)s`. It will be removed in v%(remove_in)s."
     ),
