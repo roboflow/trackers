@@ -328,11 +328,14 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        gt_format = _detect_format(self._gt_dir, self._sequences)
-        gt_paths = [_get_paths(self._gt_dir, self._detections_dir, seq, gt_format)[0] for seq in self._sequences]
-        missing_gt_files = [str(gt_path) for gt_path in gt_paths if not gt_path.is_file()]
+        missing_gt_files = [str(gt_path) for gt_path in self._ground_truth_paths() if not gt_path.is_file()]
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
+
+    def _ground_truth_paths(self) -> list[Path]:
+        """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout."""
+        gt_format = _detect_format(self._gt_dir, self._sequences)
+        return [_get_paths(self._gt_dir, self._detections_dir, seq, gt_format)[0] for seq in self._sequences]
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
@@ -405,8 +408,7 @@ class Tuner:
             tracker constructor.
         """
         class_config = resolve_mot_class_config("mot17")
-        for seq_name in self._sequences:
-            gt_path = self._gt_dir / f"{seq_name}.txt"
+        for gt_path in self._ground_truth_paths():
             _check_ground_truth_classes(load_mot_file(gt_path), class_config, gt_path)
 
         self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
