@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import os
 import tempfile
 from dataclasses import is_dataclass, replace
 from pathlib import Path
@@ -19,7 +20,7 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.eval.evaluate import _detect_format, _get_ground_truth_path, evaluate_mot_sequences
+from trackers.eval.evaluate import _detect_format, _get_ground_truth_path, _is_seqmap_file, evaluate_mot_sequences
 from trackers.eval.mot_classes import resolve_mot_class_config
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
@@ -305,6 +306,9 @@ class Tuner:
             self._metrics = [*self._metrics, required_family]
         self._threshold = threshold
         self._sequences = _discover_sequences(self._detections_dir, seqmap)
+        self._seqmap = Path(seqmap) if seqmap is not None else None
+        # Identity of the map, so a map stored in gt_dir is never taken for a sequence's ground truth.
+        self._seqmap_stat: os.stat_result | None = self._seqmap.stat() if self._seqmap is not None else None
         self.study: optuna.Study | None = None
 
         if not self._sequences:
@@ -328,13 +332,21 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
-        missing_gt_files = [str(gt_path) for gt_path in self._ground_truth_paths() if not gt_path.is_file()]
+        missing_gt_files = [
+            str(gt_path)
+            for gt_path in self._ground_truth_paths()
+            if not gt_path.is_file() or _is_seqmap_file(gt_path, self._seqmap_stat)
+        ]
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
 
     def _ground_truth_paths(self) -> list[Path]:
-        """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout."""
-        gt_format = _detect_format(self._gt_dir, self._sequences)
+        """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout.
+
+        The layout is detected as ``evaluate_mot_sequences`` detects it, so a sequence map stored in ``gt_dir`` does not
+        count as flat ground truth.
+        """
+        gt_format = _detect_format(self._gt_dir, self._sequences, seqmap_stat=self._seqmap_stat)
         return [_get_ground_truth_path(self._gt_dir, seq, gt_format) for seq in self._sequences]
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
@@ -383,11 +395,15 @@ class Tuner:
                     seq_name=seq_name,
                 )
 
-            seqmap = output_dir / "seqmap.txt"
-            seqmap.write_text(
-                "\n".join(self._sequences) + "\n",
-                encoding="utf-8",
-            )
+            # Pass the caller's map itself: evaluation recognises it by identity, so a map stored in gt_dir
+            # is never scored as a sequence's ground truth. Without one, list the discovered sequences.
+            seqmap = self._seqmap
+            if seqmap is None:
+                seqmap = output_dir / "seqmap.txt"
+                seqmap.write_text(
+                    "\n".join(self._sequences) + "\n",
+                    encoding="utf-8",
+                )
 
             result: BenchmarkResult = evaluate_mot_sequences(
                 gt_dir=self._gt_dir,
@@ -561,14 +577,14 @@ def _discover_sequences(
     Args:
         detections_dir: Directory containing ``{seq}.txt`` detection files.
         seqmap: Optional sequence map file. Each non-comment, non-empty line
-            is treated as a sequence name.
+            is treated as a sequence name. A leading UTF-8 byte order mark is ignored.
 
     Returns:
         Sorted list of sequence names.
     """
     detections_dir = Path(detections_dir)
     if seqmap is not None:
-        lines = Path(seqmap).read_text().splitlines()
+        lines = Path(seqmap).read_text(encoding="utf-8-sig").splitlines()
         return [ln.strip() for ln in lines if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"]
     return sorted(p.stem for p in detections_dir.glob("*.txt") if not p.name.startswith("."))
 
