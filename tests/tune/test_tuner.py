@@ -286,6 +286,15 @@ class TestTunerInit:
         tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
         assert tuner._sequences == ["seq1"]
 
+    def test_hidden_detection_files_are_skipped(self, tmp_path: Path) -> None:
+        """Skip hidden metadata and hidden sequences even when ground truth exists."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (det_dir / "._seq1.txt").write_text(_MOT_LINE)
+        (gt_dir / ".seq2.txt").write_text(_MOT_LINE)
+        (det_dir / ".seq2.txt").write_text(_MOT_LINE)
+        tuner = Tuner("bytetrack", gt_dir, det_dir)
+        assert tuner._sequences == ["seq1"]
+
     @pytest.mark.parametrize(
         "objective,initial_metrics,expected_metrics",
         [

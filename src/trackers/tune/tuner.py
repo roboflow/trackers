@@ -555,7 +555,8 @@ def _discover_sequences(
     """Return the list of sequence names to tune over.
 
     Reads sequence names from ``seqmap`` when provided, otherwise discovers
-    them by globbing ``*.txt`` files in ``detections_dir``.
+    them by globbing ``*.txt`` files in ``detections_dir``, skipping hidden
+    files (names starting with ``.``).
 
     Args:
         detections_dir: Directory containing ``{seq}.txt`` detection files.
@@ -569,7 +570,7 @@ def _discover_sequences(
     if seqmap is not None:
         lines = Path(seqmap).read_text().splitlines()
         return [ln.strip() for ln in lines if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"]
-    return sorted(p.stem for p in detections_dir.glob("*.txt"))
+    return sorted(p.stem for p in detections_dir.glob("*.txt") if not p.name.startswith("."))
 
 
 def _run_tracker_on_detections(
