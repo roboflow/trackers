@@ -16,6 +16,8 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 
 ### 🔧 Fixed
 
+- **CLI help describes commands and their options** — `trackers --help` shows command summaries. Run `trackers <command> --help` (for example, `trackers track --help`) for option descriptions. The new `docstring-parser` dependency lets jsonargparse read these descriptions from docstrings. Previously, `track`, `eval`, `tune` and `download` displayed Python function representations, and dataclass options showed only their type and default ([#670](https://github.com/roboflow/trackers/pull/670)).
+
 - **Frames under non-ASCII paths on Windows** — image-folder sources, MOT `img1` frames and the `trackers inspect` commands failed to read or save images whose path had characters outside ASCII, such as an accented, Cyrillic or CJK folder name, because OpenCV reads Windows paths in the ANSI code page. These files are now read and written through NumPy and decoded or encoded with OpenCV.
 
 - **CMC no longer swaps the corner velocities of a shrinking `XYXYStateEstimator` box** — `_warp_kalman_states` sorted XYXY velocities per axis, so with `BoTSORTTracker`, `McByteTracker` or `OCSORTTracker` on the non-default XYXY estimator, every CMC step, even an identity transform, swapped a shrinking box's velocities and the filter predicted it growing. Velocities are no longer sorted: each is mapped through the linear part and stays with the corner that becomes the new edge, so for an upright box a warped velocity equals the motion of the warped box as long as one step does not invert the box. ([#662](https://github.com/roboflow/trackers/pull/662))

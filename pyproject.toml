@@ -42,6 +42,7 @@ dependencies = [
     "rich>=13.0.0",
     "requests>=2.28.0",
     "jsonargparse>=4.48.0,<5",  # cli/_parser.py `_GroupedYesNo` subclasses private ActionYesNo internals; re-verify it before raising the cap
+    "docstring-parser>=0.17",  # jsonargparse reads --help text from docstrings only with it; without it a command reads "<function ...>"
     "pydeprecate>=0.12.0",  # `message_template` (renamed from `template_mgs`) first ships in 0.12.0
 ]
 

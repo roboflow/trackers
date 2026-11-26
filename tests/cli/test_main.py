@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import re
 import subprocess
@@ -1139,30 +1140,55 @@ class TestEntryPointCentralisation:
 class TestTopLevelHelp:
     """``trackers --help`` describes every command, including the two groups."""
 
-    @staticmethod
-    def _rendered_help() -> str:
-        """Return the top-level help as one whitespace-normalised line.
-
-        ``format_help`` wraps to the terminal width, so a summary that fits on one line here can be split across two on
-        a narrower terminal. Collapsing the whitespace lets a test assert on whole sentences.
-        """
+    @pytest.fixture
+    def help_lines(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        """Render help wide enough to keep each command and its summary on one line."""
+        monkeypatch.setenv("COLUMNS", "160")
         parser = auto_parser(_COMMANDS, args=[], as_positional=False, prog="trackers", parser_class=_CLIParser)
-        return " ".join(parser.format_help().split())
+        return [" ".join(line.split()) for line in parser.format_help().splitlines()]
 
-    def test_the_command_groups_are_described(self) -> None:
+    def test_the_command_groups_are_described(self, help_lines: list[str]) -> None:
         """A group is a dict, which has no docstring for jsonargparse to lift.
 
         ``track`` and friends get their summary from the command's docstring; ``benchmark`` and ``inspect`` only have
         one because ``_COMMANDS`` gives them a ``_help`` key. Dropping that key leaves them blank in ``--help``, which
         is silent — nothing errors, the description is simply missing.
         """
-        rendered = self._rendered_help()
+        assert f"benchmark {_BENCHMARK_HELP}" in help_lines
+        assert f"inspect {_INSPECT_HELP}" in help_lines
 
-        assert _BENCHMARK_HELP in rendered
-        assert _INSPECT_HELP in rendered
-
-    def test_the_help_key_is_not_offered_as_a_subcommand(self) -> None:
+    def test_the_help_key_is_not_offered_as_a_subcommand(self, help_lines: list[str]) -> None:
         """``_help`` carries a description, so it must not also read as a command."""
-        rendered = self._rendered_help()
+        assert all("_help" not in line for line in help_lines)
 
-        assert "_help" not in rendered
+    @pytest.mark.parametrize(
+        ("name", "command"),
+        [
+            pytest.param("track", track_command, id="track"),
+            pytest.param("eval", eval_command, id="eval"),
+            pytest.param("tune", tune_command, id="tune"),
+            pytest.param("download", download_command, id="download"),
+        ],
+    )
+    def test_each_command_is_described_by_its_docstring(
+        self,
+        name: str,
+        command: object,
+        help_lines: list[str],
+    ) -> None:
+        """A command's docstring summary reaches ``--help`` only when ``docstring-parser`` is installed.
+
+        Without it, jsonargparse falls back to ``str(command)`` and lists ``<function track_command at 0x...>``.
+        """
+        summary = " ".join((inspect.getdoc(command) or "").split("\n\n")[0].split())
+
+        assert summary
+        assert f"{name} {summary}" in help_lines
+
+    def test_track_options_are_described_by_their_docstrings(self) -> None:
+        """Option help comes from the dataclass ``Args:`` sections, read by the same parser."""
+        parser = auto_parser(_COMMANDS, args=[], as_positional=False, prog="trackers", parser_class=_CLIParser)
+        track_help = " ".join(parser._subcommands_action.choices["track"].format_help().split())
+
+        assert "Detection confidence threshold." in track_help
+        assert "MOT-format predictions output path." in track_help
