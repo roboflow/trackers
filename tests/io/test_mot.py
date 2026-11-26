@@ -6,11 +6,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from trackers.eval.mot_classes import MOTClassConfig
-from trackers.io.mot import _class_mask, _MOTFrameData, _prepare_mot_sequence
+from trackers.io.mot import _class_mask, _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 
 def _frame(
@@ -305,3 +307,25 @@ class TestClassMask:
         assert mask.dtype == expected.dtype
         assert mask.shape == expected.shape
         assert mask.tobytes() == expected.tobytes()
+
+
+class TestLoadMotFile:
+    """`load_mot_file` parses MOT text regardless of how the file was saved."""
+
+    @pytest.mark.parametrize(
+        "encoding",
+        [
+            pytest.param("utf-8", id="plain"),
+            pytest.param("utf-8-sig", id="utf8-bom"),
+        ],
+    )
+    def test_byte_order_mark_does_not_change_parsed_rows(self, tmp_path: Path, encoding: str) -> None:
+        """A UTF-8 byte order mark, as written by Excel and some Windows editors, is not read as part of the frame."""
+        mot_file = tmp_path / "gt.txt"
+        mot_file.write_text("1,7,10,20,30,40,1,1,1\n2,7,12,20,30,40,1,1,1\n", encoding=encoding)
+
+        frames = load_mot_file(mot_file)
+
+        assert sorted(frames) == [1, 2]
+        np.testing.assert_array_equal(frames[1].ids, [7])
+        np.testing.assert_allclose(frames[1].boxes, [[10.0, 20.0, 30.0, 40.0]])

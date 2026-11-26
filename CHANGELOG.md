@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### 🔧 Fixed
+
+- **MOT and detection files saved with a UTF-8 byte order mark now load** — `load_mot_file` (used by `trackers eval`, `trackers track`, the tuner and ReID calibration) and the detection-file reader behind `trackers benchmark` and `trackers inspect` read the mark that Excel's "CSV UTF-8" export and some Windows editors put at the start of a file as part of the first frame number, so a valid `gt.txt` or `det.txt` failed with `Invalid frame number` or `Could not parse detection line 1`. Both readers now open files as `utf-8-sig`, which drops a leading mark and reads every other UTF-8 file unchanged.
+
 ## [2.7.0] — 2026-11-05
 
 ### 🚀 Added
