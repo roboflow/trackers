@@ -201,6 +201,66 @@ class TestEvaluateMOTSequence:
         assert bool(mot20_warnings) is expect_warning
 
 
+class TestEvaluateEmptyPredictions:
+    """A tracker that output nothing scores zero instead of aborting the evaluation."""
+
+    GT = "1,1,10,10,30,30,1,1,1\n1,2,60,10,30,30,1,1,1\n2,1,12,10,30,30,1,1,1\n"
+
+    @pytest.mark.parametrize("content", ["", "\n", "  \n\n"], ids=["empty", "newline", "blank-lines"])
+    def test_sequence_with_no_predictions_scores_zero(self, tmp_path: Path, content: str) -> None:
+        """Every ground-truth box is a miss, and every metric is zero."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text(self.GT)
+        tracker_path.write_text(content)
+
+        result = evaluate_mot_sequence(gt_path, tracker_path, metrics=["CLEAR", "HOTA", "Identity"])
+
+        assert result.CLEAR is not None
+        assert result.HOTA is not None
+        assert result.Identity is not None
+        assert result.CLEAR.CLR_TP == 0
+        assert result.CLEAR.CLR_FP == 0
+        assert result.CLEAR.CLR_FN == 3
+        assert result.CLEAR.MOTA == 0
+        assert result.HOTA.HOTA == 0
+        assert result.Identity.IDF1 == 0
+
+    def test_one_empty_sequence_does_not_abort_the_benchmark(self, tmp_path: Path) -> None:
+        """The other sequences are still scored, and the misses reach the aggregate."""
+        gt_dir = tmp_path / "gt"
+        tracker_dir = tmp_path / "pred"
+        tracker_dir.mkdir()
+        for name, predictions in (("seq-a", self.GT.replace(",1,1,1\n", ",0.9,-1,-1,-1\n")), ("seq-b", "")):
+            (gt_dir / name / "gt").mkdir(parents=True)
+            (gt_dir / name / "gt" / "gt.txt").write_text(self.GT)
+            (tracker_dir / f"{name}.txt").write_text(predictions)
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, metrics=["CLEAR"])
+
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.CLR_TP == 3
+        assert result.aggregate.CLEAR.CLR_FN == 3
+
+    def test_empty_ground_truth_stays_an_error(self, tmp_path: Path) -> None:
+        """Only predictions may be empty: no ground truth means there is nothing to score."""
+        gt_path = tmp_path / "gt.txt"
+        tracker_path = tmp_path / "tracker.txt"
+        gt_path.write_text("")
+        tracker_path.write_text(self.GT)
+
+        with pytest.raises(ValueError, match="empty"):
+            evaluate_mot_sequence(gt_path, tracker_path)
+
+    def test_missing_predictions_stay_an_error(self, tmp_path: Path) -> None:
+        """A results file that doesn't exist isn't a tracker that output nothing."""
+        gt_path = tmp_path / "gt.txt"
+        gt_path.write_text(self.GT)
+
+        with pytest.raises(FileNotFoundError):
+            evaluate_mot_sequence(gt_path, tmp_path / "missing.txt")
+
+
 class TestEvaluateMOTSequencesClassConfig:
     """`class_config` passed to `evaluate_mot_sequences` must reach the per-sequence scoring."""
 
