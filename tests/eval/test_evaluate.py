@@ -284,13 +284,21 @@ class TestEvaluateEmptyPredictions:
 
     GT = "1,1,10,10,30,30,1,1,1\n1,2,60,10,30,30,1,1,1\n2,1,12,10,30,30,1,1,1\n"
 
-    @pytest.mark.parametrize("content", ["", "\n", "  \n\n"], ids=["empty", "newline", "blank-lines"])
+    @pytest.mark.parametrize(
+        "content",
+        ["", "\n", "  \n\n", "﻿", "﻿\n"],
+        ids=["empty", "newline", "blank-lines", "bom-only", "bom-newline"],
+    )
     def test_sequence_with_no_predictions_scores_zero(self, tmp_path: Path, content: str) -> None:
-        """Every ground-truth box is a miss, and every metric is zero."""
+        """Every ground-truth box is a miss, and every metric is zero.
+
+        A UTF-8 byte order mark, as Excel and some Windows editors write, is not a row, so a file holding only the mark
+        is a tracker that output nothing too.
+        """
         gt_path = tmp_path / "gt.txt"
         tracker_path = tmp_path / "tracker.txt"
         gt_path.write_text(self.GT)
-        tracker_path.write_text(content)
+        tracker_path.write_text(content, encoding="utf-8")
 
         result = evaluate_mot_sequence(gt_path, tracker_path, metrics=["CLEAR", "HOTA", "Identity"])
 
@@ -320,14 +328,21 @@ class TestEvaluateEmptyPredictions:
         assert result.aggregate.CLEAR.CLR_TP == 3
         assert result.aggregate.CLEAR.CLR_FN == 3
 
-    def test_empty_ground_truth_stays_an_error(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        ("content", "message"),
+        [
+            pytest.param("", "MOT file is empty", id="empty"),
+            pytest.param("﻿", "No valid data found", id="bom-only"),
+        ],
+    )
+    def test_empty_ground_truth_stays_an_error(self, tmp_path: Path, content: str, message: str) -> None:
         """Only predictions may be empty: no ground truth means there is nothing to score."""
         gt_path = tmp_path / "gt.txt"
         tracker_path = tmp_path / "tracker.txt"
-        gt_path.write_text("")
+        gt_path.write_text(content, encoding="utf-8")
         tracker_path.write_text(self.GT)
 
-        with pytest.raises(ValueError, match="empty"):
+        with pytest.raises(ValueError, match=message):
             evaluate_mot_sequence(gt_path, tracker_path)
 
     def test_missing_predictions_stay_an_error(self, tmp_path: Path) -> None:
@@ -441,6 +456,35 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
 
         assert list(result.sequences) == [sequence]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
+        "seqmap_text",
+        [
+            pytest.param("name\nsequence1\n", id="with-header"),
+            pytest.param("sequence1\n", id="without-header"),
+        ],
+    )
+    def test_seqmap_byte_order_mark_is_not_part_of_the_first_entry(self, tmp_path: Path, seqmap_text: str) -> None:
+        """A UTF-8 byte order mark, as Excel and some Windows editors write, does not rename the map's first entry.
+
+        Read as text, the mark would turn the `name` header into a sequence of its own, or the first sequence into one
+        whose ground truth cannot be found.
+        """
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "sequence1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text(seqmap_text, encoding="utf-8-sig")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+        assert list(result.sequences) == ["sequence1"]
         assert result.aggregate.CLEAR is not None
         assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
 

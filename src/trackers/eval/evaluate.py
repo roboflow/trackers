@@ -30,7 +30,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence, load_mot_file
+from trackers.io.mot import _MOT_READ_ENCODING, _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,8 @@ def _load_predictions(path: str | Path) -> dict[int, _MOTFrameData]:
     """
     path = Path(path)
     if path.exists():
-        with open(path) as f:
+        # Decode as `load_mot_file` does, so a file holding only a byte order mark counts as having no rows.
+        with open(path, encoding=_MOT_READ_ENCODING) as f:
             if not any(line.strip() for line in f):
                 return {}
     return load_mot_file(path)
@@ -537,7 +538,7 @@ def _parse_seqmap(seqmap_path: str | Path) -> list[str]:
         raise FileNotFoundError(f"Sequence map file not found: {seqmap_path}")
 
     sequences = []
-    with open(seqmap_path) as f:
+    with open(seqmap_path, encoding=_MOT_READ_ENCODING) as f:
         for line in f:
             line = line.strip()
             # Skip empty lines, comments, and header

@@ -24,6 +24,10 @@ from trackers.eval.mot_classes import MOTClassConfig, MOTClassPreset, resolve_mo
 
 _DISTRACTOR_IOU_THRESHOLD = 0.5
 
+#: Encoding for reading MOT Challenge text files: UTF-8 that skips a leading byte order mark, as written by Excel and
+#: some Windows editors, so the mark is never read as part of the first row or name.
+_MOT_READ_ENCODING = "utf-8-sig"
+
 
 @dataclass
 class _MOTFrameData:
@@ -192,7 +196,7 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
 
     frame_data: dict[int, list[list[str]]] = {}
 
-    with open(path, encoding="utf-8-sig") as f:
+    with open(path, encoding=_MOT_READ_ENCODING) as f:
         # Check if file is empty
         f.seek(0, 2)
         if f.tell() == 0:
