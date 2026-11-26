@@ -3376,7 +3376,12 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 <h2 id="unreleased"><a href="https://github.com/roboflow/trackers/compare/2.7.0...HEAD">Unreleased</a></h2>
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
-<li><strong>MOT and detection files saved with a UTF-8 byte order mark now load</strong> — <code>load_mot_file</code> (used by <code>trackers eval</code>, <code>trackers track</code>, the tuner and ReID calibration) and the detection-file reader behind <code>trackers benchmark</code> and <code>trackers inspect</code> read the mark that Excel's "CSV UTF-8" export and some Windows editors put at the start of a file as part of the first frame number, so a valid <code>gt.txt</code> or <code>det.txt</code> failed with <code>Invalid frame number</code> or <code>Could not parse detection line 1</code>. Both readers now open files as <code>utf-8-sig</code>, which drops a leading mark and reads every other UTF-8 file unchanged.</li>
+<li>
+<p><strong><code>trackers eval</code> scores a results file with no rows as a tracker that output nothing</strong> — a sequence where <code>trackers track</code> found no tracks writes such a file, and it used to raise <code>ValueError</code> and abort the whole benchmark. It now counts every scored ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error (<a href="https://github.com/roboflow/trackers/pull/659">#659</a>).</p>
+</li>
+<li>
+<p><strong>MOT and detection files saved with a UTF-8 byte order mark now load</strong> — <code>load_mot_file</code> (used by <code>trackers eval</code>, <code>trackers track</code>, the tuner and ReID calibration) and the detection-file reader behind <code>trackers benchmark</code> and <code>trackers inspect</code> read the mark that Excel's "CSV UTF-8" export and some Windows editors put at the start of a file as part of the first frame number, so a valid <code>gt.txt</code> or <code>det.txt</code> failed with <code>Invalid frame number</code> or <code>Could not parse detection line 1</code>. Both readers now open files as <code>utf-8-sig</code>, which drops a leading mark and reads every other UTF-8 file unchanged.</p>
+</li>
 </ul>
 <h2 id="270-2026-11-05"><a href="https://github.com/roboflow/trackers/compare/2.6.1...2.7.0">2.7.0</a> — 2026-11-05</h2>
 <h3 id="trackers">Trackers</h3>
