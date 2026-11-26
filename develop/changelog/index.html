@@ -3377,6 +3377,9 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
 <li>
+<p><strong>Evaluation tables no longer show uncomputed columns as zero</strong> — unavailable or misspelled columns are skipped with a warning naming them. Valid requested columns remain visible, and if none are valid the table uses available default columns. <code>trackers eval --output</code> still saves computed results (<a href="https://github.com/roboflow/trackers/pull/660">#660</a>).</p>
+</li>
+<li>
 <p><strong><code>trackers eval</code> scores a results file with no rows as a tracker that output nothing</strong> — a sequence where <code>trackers track</code> found no tracks writes such a file, and it used to raise <code>ValueError</code> and abort the whole benchmark. It now counts every scored ground-truth box as a miss and scores zero. A ground-truth file with no rows is still an error (<a href="https://github.com/roboflow/trackers/pull/659">#659</a>).</p>
 </li>
 <li>
