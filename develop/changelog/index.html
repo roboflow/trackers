@@ -3377,6 +3377,9 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
 <li>
+<p><strong>CLI help describes commands and their options</strong> — <code>trackers --help</code> shows command summaries. Run <code>trackers &lt;command&gt; --help</code> (for example, <code>trackers track --help</code>) for option descriptions. The new <code>docstring-parser</code> dependency lets jsonargparse read these descriptions from docstrings. Previously, <code>track</code>, <code>eval</code>, <code>tune</code> and <code>download</code> displayed Python function representations, and dataclass options showed only their type and default (<a href="https://github.com/roboflow/trackers/pull/670">#670</a>).</p>
+</li>
+<li>
 <p><strong>Frames under non-ASCII paths on Windows</strong> — image-folder sources, MOT <code>img1</code> frames and the <code>trackers inspect</code> commands failed to read or save images whose path had characters outside ASCII, such as an accented, Cyrillic or CJK folder name, because OpenCV reads Windows paths in the ANSI code page. These files are now read and written through NumPy and decoded or encoded with OpenCV.</p>
 </li>
 <li>
