@@ -179,6 +179,8 @@ wandb/
 # AI tools
 *.local.*
 .claude/
+.codex/
+.opencode-rig/
 .plans/
 .experiments/
 .developments/

@@ -802,10 +802,11 @@ class CMC:
         All tracklets in the list must share the same state representation type.
         Pass a heterogeneous list and ``TypeError`` is raised immediately.
 
-        For XYXY-state tracks, positions and velocities are updated via four-corner
-        enclosure (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under
-        rotation, reflection, and shear. The state covariance is updated with the
-        block-diagonal rotation matrix only when ``rot_mtx`` is axis-aligned
+        For XYXY-state tracks, positions are updated via four-corner enclosure
+        (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under rotation,
+        reflection, and shear. Each velocity is mapped through the linear part only and
+        stays with the corner that becomes the new edge. The state covariance is updated
+        with the block-diagonal rotation matrix only when ``rot_mtx`` is axis-aligned
         (off-diagonals < 1e-6). When ``rot_mtx`` has cross-axis terms, the covariance is
         left unchanged.
 
@@ -887,15 +888,20 @@ def _warp_kalman_states(
         # top-left and bottom-right corners can invert the box or produce
         # invalid geometry. Transform all four corners, then rebuild the
         # enclosing axis-aligned box with per-axis min/max.
+        # Velocities have no ordering of their own (a shrinking box has vx1 > vx2),
+        # so each edge takes the velocity of its source corner. Select each input
+        # coordinate by transform sign and box ordering, including tied positions:
+        # a reflected zero-width edge must use the opposite corner's velocity.
+        second_is_low = (states[:, 2:4] < states[:, 0:2])[:, np.newaxis, :] ^ (rot_mtx < 0)[np.newaxis, :, :]
+        first_velocity = states[:, np.newaxis, 4:6]
+        second_velocity = states[:, np.newaxis, 6:8]
+        low_velocity = (np.where(second_is_low, second_velocity, first_velocity) * rot_mtx).sum(axis=2)
+        high_velocity = (np.where(second_is_low, first_velocity, second_velocity) * rot_mtx).sum(axis=2)
         states[:, 0], states[:, 1], states[:, 2], states[:, 3] = CMC.warp_xyxy_corners(
             states[:, 0], states[:, 1], states[:, 2], states[:, 3], rot_mtx, translation
         )
-        # Keep XYXY velocity ordering valid under mixed-axis transforms by
-        # applying the same corner-wise normalization to the paired velocity
-        # components.
-        states[:, 4], states[:, 5], states[:, 6], states[:, 7] = CMC.warp_xyxy_corners(
-            states[:, 4], states[:, 5], states[:, 6], states[:, 7], rot_mtx
-        )
+        states[:, 4:6] = low_velocity
+        states[:, 6:8] = high_velocity
     else:
         # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
         states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation

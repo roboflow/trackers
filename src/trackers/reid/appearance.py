@@ -110,7 +110,8 @@ def extract_ground_truth_embeddings(
     Args:
         model: Encoder to embed crops with, or a model name to load.
         dataset_root: Directory holding one folder per sequence.
-        sequences: Sequences to read. Defaults to every one found.
+        sequences: Sequences to read. Defaults to every one found, skipping
+            hidden directories (names starting with ``.``).
         keep_classes: MOT class ids to keep, e.g. ``(1,)`` for MOT17
             pedestrians. Defaults to every class, which suits single-class
             datasets such as SoccerNet.
@@ -128,7 +129,13 @@ def extract_ground_truth_embeddings(
     if isinstance(model, str):
         model = _load_reid_encoder(model)
     root = Path(dataset_root)
-    names = sorted(p.parent.parent.name for p in root.glob("*/gt/gt.txt")) if sequences is None else list(sequences)
+    if sequences is None:
+        # Skip hidden directories, as sequence discovery in `trackers.eval` does.
+        names = sorted(
+            p.parent.parent.name for p in root.glob("*/gt/gt.txt") if not p.parent.parent.name.startswith(".")
+        )
+    else:
+        names = list(sequences)
     if not names:
         raise FileNotFoundError(f"no sequences with gt/gt.txt under {root}")
 
