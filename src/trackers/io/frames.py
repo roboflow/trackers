@@ -10,8 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import cv2
 import numpy as np
+
+from trackers.io._image import _read_image
 
 MOT_FRAME_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
@@ -61,7 +62,7 @@ def load_mot_frame_image(frame_dir: Path, frame_idx: int) -> np.ndarray:
             f"MOT frame image not found for frame {frame_idx} under {frame_dir}: "
             f"tried stems ({stems}) with extensions ({extensions})"
         )
-    frame = cv2.imread(str(path))
+    frame = _read_image(path)
     if frame is None:
         raise OSError(f"Failed to decode image: {path}")
     return frame
