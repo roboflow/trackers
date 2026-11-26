@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import inspect
-import os
 import tempfile
 from dataclasses import is_dataclass, replace
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, get_args, get_type_hints
 
@@ -20,8 +20,16 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.eval.evaluate import _detect_format, _get_ground_truth_path, _is_seqmap_file, evaluate_mot_sequences
-from trackers.eval.mot_classes import resolve_mot_class_config
+from trackers.eval.evaluate import (
+    _detect_format,
+    _evaluate_sequences,
+    _get_ground_truth_path,
+    _is_seqmap_file,
+    _read_seqmap_text,
+    _validate_metrics,
+    _warn_if_mot20_sequences_use_mot17_config,
+)
+from trackers.eval.mot_classes import MOTClassConfig, resolve_mot_class_config
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
 from trackers.io.mot import _check_ground_truth_classes, _mot_frame_to_detections, _MOTOutput, load_mot_file
@@ -139,8 +147,8 @@ class Tuner:
             ``enqueue_defaults=True``). Defaults to ``None`` (non-deterministic).
         threshold: IoU threshold forwarded to ``evaluate_mot_sequences``.
             Defaults to ``0.5``.
-        seqmap: Optional path to a sequence map file. When provided only the
-            listed sequences are evaluated.
+        seqmap: Optional path to a sequence map file. The listed sequences and
+            their ground-truth paths are resolved at initialization and used for every trial.
         search_space: Entries that replace or add to the tracker's
             ``search_space`` for this run, validated the same way. Use it to fit
             a range to your data, e.g.
@@ -306,22 +314,15 @@ class Tuner:
             self._metrics = [*self._metrics, required_family]
         self._threshold = threshold
         self._sequences = _discover_sequences(self._detections_dir, seqmap)
-        self._seqmap = Path(seqmap) if seqmap is not None else None
-        # Identity of the map, so a map stored in gt_dir is never taken for a sequence's ground truth.
-        self._seqmap_stat: os.stat_result | None = self._seqmap.stat() if self._seqmap is not None else None
         self.study: optuna.Study | None = None
 
         if not self._sequences:
             raise ValueError(f"No sequences found in {self._detections_dir}")
 
-        self._validate_sequence_files()
+        self._ground_truth = self._validate_sequence_files(seqmap)
 
-    def _validate_sequence_files(self) -> None:
-        """Validate that every selected sequence has required MOT files.
-
-        This performs eager filesystem validation so configuration errors are reported during tuner initialization
-        rather than later during trial execution.
-        """
+    def _validate_sequence_files(self, seqmap: str | Path | None) -> list[tuple[str, Path]]:
+        """Validate selected MOT files and keep the sequence and ground-truth pairs for scoring."""
         missing_detection_files = [
             str(self._detections_dir / f"{seq_name}.txt")
             for seq_name in self._sequences
@@ -332,22 +333,16 @@ class Tuner:
                 "Missing detection files for selected sequences: " + ", ".join(missing_detection_files)
             )
 
+        # Resolve the layout once, excluding the map even if a ground-truth candidate is a link to it.
+        seqmap_stat = Path(seqmap).stat() if seqmap is not None else None
+        gt_format = _detect_format(self._gt_dir, self._sequences, seqmap_stat=seqmap_stat)
+        ground_truth = [(name, _get_ground_truth_path(self._gt_dir, name, gt_format)) for name in self._sequences]
         missing_gt_files = [
-            str(gt_path)
-            for gt_path in self._ground_truth_paths()
-            if not gt_path.is_file() or _is_seqmap_file(gt_path, self._seqmap_stat)
+            str(path) for _, path in ground_truth if not path.is_file() or _is_seqmap_file(path, seqmap_stat)
         ]
         if missing_gt_files:
             raise FileNotFoundError("Missing ground-truth files for selected sequences: " + ", ".join(missing_gt_files))
-
-    def _ground_truth_paths(self) -> list[Path]:
-        """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout.
-
-        The layout is detected as ``evaluate_mot_sequences`` detects it, so a sequence map stored in ``gt_dir`` does not
-        count as flat ground truth.
-        """
-        gt_format = _detect_format(self._gt_dir, self._sequences, seqmap_stat=self._seqmap_stat)
-        return [_get_ground_truth_path(self._gt_dir, seq, gt_format) for seq in self._sequences]
+        return ground_truth
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
@@ -356,11 +351,12 @@ class Tuner:
             params["reid_model"] = self._cached_reid_model
         return self._tracker_info.tracker_class(**params)
 
-    def _objective(self, trial: optuna.Trial) -> float:
+    def _objective(self, trial: optuna.Trial, *, class_config: MOTClassConfig) -> float:
         """Sample hyperparameters, run tracker over all sequences, return metric.
 
         Args:
             trial: Optuna trial used to sample parameter values.
+            class_config: Ground-truth class rules shared by preflight and scoring.
 
         Returns:
             Scalar metric value for this trial.
@@ -395,22 +391,12 @@ class Tuner:
                     seq_name=seq_name,
                 )
 
-            # Pass the caller's map itself: evaluation recognises it by identity, so a map stored in gt_dir
-            # is never scored as a sequence's ground truth. Without one, list the discovered sequences.
-            seqmap = self._seqmap
-            if seqmap is None:
-                seqmap = output_dir / "seqmap.txt"
-                seqmap.write_text(
-                    "\n".join(self._sequences) + "\n",
-                    encoding="utf-8",
-                )
-
-            result: BenchmarkResult = evaluate_mot_sequences(
-                gt_dir=self._gt_dir,
-                tracker_dir=output_dir,
-                metrics=self._metrics,
-                threshold=self._threshold,
-                seqmap=seqmap,
+            result: BenchmarkResult = _evaluate_sequences(
+                self._ground_truth,
+                output_dir,
+                _validate_metrics(self._metrics),
+                self._threshold,
+                class_config,
             )
 
         return _extract_metric(result, self._objective_metric)
@@ -424,7 +410,8 @@ class Tuner:
             tracker constructor.
         """
         class_config = resolve_mot_class_config("mot17")
-        for gt_path in self._ground_truth_paths():
+        _warn_if_mot20_sequences_use_mot17_config(self._sequences, class_config)
+        for _, gt_path in self._ground_truth:
             _check_ground_truth_classes(load_mot_file(gt_path), class_config, gt_path)
 
         self.study = _create_optuna_study(self._optuna, self._tracker_id, self._seed)
@@ -438,7 +425,7 @@ class Tuner:
                     if name in self._tunable_search_space
                 }
             )
-        self.study.optimize(self._objective, n_trials=self._n_trials)
+        self.study.optimize(partial(self._objective, class_config=class_config), n_trials=self._n_trials)
         return _assemble_constructor_params(
             self._tracker_info.tracker_class, {**dict(self.study.best_params), **self._fixed_params}
         )
@@ -584,7 +571,7 @@ def _discover_sequences(
     """
     detections_dir = Path(detections_dir)
     if seqmap is not None:
-        lines = Path(seqmap).read_text(encoding="utf-8-sig").splitlines()
+        lines = _read_seqmap_text(Path(seqmap)).splitlines()
         return [ln.strip() for ln in lines if ln.strip() and not ln.startswith("#") and ln.strip().lower() != "name"]
     return sorted(p.stem for p in detections_dir.glob("*.txt") if not p.name.startswith("."))
 

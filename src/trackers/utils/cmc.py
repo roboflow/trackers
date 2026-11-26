@@ -805,11 +805,10 @@ class CMC:
         For XYXY-state tracks, positions are updated via four-corner enclosure
         (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under rotation,
         reflection, and shear. Each velocity is mapped through the linear part only and
-        stays with the corner that becomes the new edge. When ``rot_mtx`` is axis-aligned
-        (off-diagonals < 1e-6), the state covariance is propagated with that same
-        per-track linear map, so a corner moved to the other edge by a reflection (or by
-        reordering an inverted box) carries its variances and cross terms with it. When
-        ``rot_mtx`` has cross-axis terms, the covariance is left unchanged.
+        stays with the corner that becomes the new edge. When both off-diagonal
+        coefficients have magnitude at most 1e-6, the covariance follows the same
+        per-track linear map, including corner swaps and cross terms. Larger
+        off-diagonal coefficients leave the covariance unchanged.
 
         For XCYCWH- and XCYCSR-state tracks, only the centre position and velocity are
         rotated; the size terms and their velocities are not transformed.

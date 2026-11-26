@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import locale
 import re
 import warnings
 from pathlib import Path
@@ -485,6 +486,28 @@ class TestEvaluateMOTSequencesDiscovery:
         result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
 
         assert list(result.sequences) == ["sequence1"]
+        assert result.aggregate.CLEAR is not None
+        assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
+
+    @pytest.mark.parametrize(
+        "sequence",
+        [pytest.param("café", id="invalid-utf8"), pytest.param("Ø§", id="also-valid-utf8")],
+    )
+    def test_reads_locale_encoded_seqmap(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, sequence: str) -> None:
+        """Accept legacy code-page sequence names without requiring the host to use that code page."""
+        monkeypatch.setattr(locale, "getpreferredencoding", lambda do_setlocale=False: "cp1252")
+        gt_dir = tmp_path / "gt"
+        gt_dir.mkdir()
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (gt_dir / f"{sequence}.txt").write_text("1,1,10,10,20,20,1,1\n")
+        (tracker_dir / f"{sequence}.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_bytes(f"name\n{sequence}\n".encode("cp1252"))
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap)
+
+        assert list(result.sequences) == [sequence]
         assert result.aggregate.CLEAR is not None
         assert result.aggregate.CLEAR.MOTA == pytest.approx(1.0)
 

@@ -101,7 +101,7 @@ A zero-confidence row can still affect distractor matching: its box participates
 
 By default only class `1` (pedestrian) is scored; `--class_config` changes this. A class below `1` that `--class_config` does not name raises an error, such as the `-1` placeholders in the MOT15 layout, because those rows would not be scored. To score those rows, add the placeholder to the scored classes: `--class_config '{"scored_classes": [1, -1]}'`. Naming only `-1` would leave any class `1` rows in the file unscored. In a file with only the first 6 or 7 columns, every row is treated as class `1`.
 
-A tracker results file with no rows is read as a tracker that output nothing: every scored ground-truth box counts as a miss and the scores are zero. An empty ground-truth file is still an error.
+A tracker results file with no rows is read as a tracker that output nothing: every scored ground-truth box counts as a miss. MOTA, HOTA, and IDF1 are zero when computed for a sequence with scored ground truth. An empty ground-truth file is still an error.
 
 ---
 
