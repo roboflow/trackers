@@ -2943,8 +2943,9 @@ otherwise after the ground-truth file stem.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If an unsupported metric family is requested, or if <code>class_config</code> is neither a supported
-preset name nor a <code>MOTClassConfig</code>.</p>
+                <p>If an unsupported metric family is requested, if <code>class_config</code> is neither a supported
+preset name nor a <code>MOTClassConfig</code>, or if a ground-truth row not marked ignored has a class below 1
+that <code>class_config</code> does not name.</p>
               </div>
             </td>
           </tr>
@@ -3206,8 +3207,9 @@ Defaults to "mot17".</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>If no sequences are found, if an unsupported metric family is requested, or if <code>class_config</code>
-is neither a supported preset name nor a <code>MOTClassConfig</code>.</p>
+                <p>If no sequences are found, if an unsupported metric family is requested, if <code>class_config</code>
+is neither a supported preset name nor a <code>MOTClassConfig</code>, or if a ground-truth row not marked ignored
+has a class below 1 that <code>class_config</code> does not name.</p>
               </div>
             </td>
           </tr>
