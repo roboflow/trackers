@@ -805,10 +805,11 @@ class CMC:
         For XYXY-state tracks, positions are updated via four-corner enclosure
         (``CMC.warp_xyxy_corners``) so that axis-alignment is preserved under rotation,
         reflection, and shear. Each velocity is mapped through the linear part only and
-        stays with the corner that becomes the new edge. The state covariance is updated
-        with the block-diagonal rotation matrix only when ``rot_mtx`` is axis-aligned
-        (off-diagonals < 1e-6). When ``rot_mtx`` has cross-axis terms, the covariance is
-        left unchanged.
+        stays with the corner that becomes the new edge. When ``rot_mtx`` is axis-aligned
+        (off-diagonals < 1e-6), the state covariance is propagated with that same
+        per-track linear map, so a corner moved to the other edge by a reflection (or by
+        reordering an inverted box) carries its variances and cross terms with it. When
+        ``rot_mtx`` has cross-axis terms, the covariance is left unchanged.
 
         For XCYCWH- and XCYCSR-state tracks, only the centre position and velocity are
         rotated; the size terms and their velocities are not transformed.
@@ -866,7 +867,8 @@ def _warp_kalman_states(
 
     Centre-based states (``XCYCWH``, ``XCYCSR``: ``[xc, yc, _, _, vx, vy, ...]``) have
     their centre position and velocity transformed; the size terms are left
-    unchanged. ``XYXY`` states are warped corner-wise (see ``CMC.apply_batch``).
+    unchanged. ``XYXY`` states are warped corner-wise, and their covariance follows the
+    same corner relabelling (see ``CMC.apply_batch``).
 
     Args:
         states: ``(N, dim)`` state vectors.
@@ -902,29 +904,52 @@ def _warp_kalman_states(
         )
         states[:, 4:6] = low_velocity
         states[:, 6:8] = high_velocity
+        # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
+        # to 1e-6 residuals on off-diagonals even for pure-translation affine_mtx;
+        # default atol=1e-8 misclassifies those as cross-axis transforms.
+        if np.isclose(rot_mtx[0, 1], 0.0, atol=1e-6) and np.isclose(rot_mtx[1, 0], 0.0, atol=1e-6):
+            # The covariance must describe the warped state, so it is conjugated by the
+            # Jacobian of the corner warp above: the swap that moves a corner and its
+            # velocity to the other edge must move its variances and cross terms too.
+            jacobian = _xyxy_warp_jacobian(second_is_low, rot_mtx, dim)
+            covariances = jacobian @ covariances @ jacobian.transpose(0, 2, 1)
     else:
         # Batch-transform centre positions: pos' = pos @ rot_mtx.T + translation
         states[:, 0:2] = states[:, 0:2] @ rot_mtx.T + translation
         # Batch-transform centre velocities: vel' = vel @ rot_mtx.T
         states[:, 4:6] = states[:, 4:6] @ rot_mtx.T
-
-    block_rot = None
-    if is_xyxy:
-        # atol=1e-6: float32 CMC (sparseOptFlow/ORB/SIFT/ECC) carries ~1e-7
-        # to 1e-6 residuals on off-diagonals even for pure-translation affine_mtx;
-        # default atol=1e-8 misclassifies those as cross-axis transforms.
-        if np.isclose(rot_mtx[0, 1], 0.0, atol=1e-6) and np.isclose(rot_mtx[1, 0], 0.0, atol=1e-6):
-            block_rot = np.eye(dim, dtype=np.float64)
-            block_rot[0:2, 0:2] = rot_mtx
-            block_rot[2:4, 2:4] = rot_mtx
-            block_rot[4:6, 4:6] = rot_mtx
-            block_rot[6:8, 6:8] = rot_mtx
-    else:
         block_rot = np.eye(dim, dtype=np.float64)
         block_rot[0:2, 0:2] = rot_mtx
         block_rot[4:6, 4:6] = rot_mtx
-
-    if block_rot is not None:
         covariances = block_rot @ covariances @ block_rot.T
 
     return states, covariances
+
+
+def _xyxy_warp_jacobian(second_is_low: np.ndarray, rot_mtx: np.ndarray, dim: int) -> np.ndarray:
+    """Build the per-track linear map the XYXY corner warp applies to the state.
+
+    Entry ``[n, i, j]`` of ``second_is_low`` selects which stored corner feeds input axis ``j``
+    of output axis ``i`` on the new low edge: the second corner (``x2``/``y2``) when ``True``,
+    the first (``x1``/``y1``) otherwise; the new high edge reads the opposite corner. The
+    same selection moves the positions ``[x1, y1, x2, y2]`` and the velocities
+    ``[vx1, vy1, vx2, vy2]``, so one ``4 x 4`` map fills both diagonal blocks.
+
+    Args:
+        second_is_low: ``(N, 2, 2)`` corner-selection mask computed from the state before
+            the warp.
+        rot_mtx: ``(2, 2)`` linear part of the affine transform.
+        dim: State dimension; any components after the eight corner terms are left as
+            identity.
+
+    Returns:
+        ``(N, dim, dim)`` Jacobian ``J`` of the warp, so the warped covariance is
+            ``J @ P @ J.T``.
+    """
+    from_same_corner = np.where(second_is_low, 0.0, rot_mtx)
+    from_other_corner = np.where(second_is_low, rot_mtx, 0.0)
+    corner_map = np.block([[from_same_corner, from_other_corner], [from_other_corner, from_same_corner]])
+    jacobian = np.tile(np.eye(dim, dtype=np.float64), (len(second_is_low), 1, 1))
+    jacobian[:, 0:4, 0:4] = corner_map
+    jacobian[:, 4:8, 4:8] = corner_map
+    return jacobian

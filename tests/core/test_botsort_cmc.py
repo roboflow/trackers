@@ -340,23 +340,30 @@ class TestXYXYCovarianceUpdate:
 
     All tests build an `_xyxy_tracklet([10, 20, 50, 80])`, snapshot `kf.state_covariance`, construct an H matrix from a
     chosen 2x2 R block, apply CMC (single via `tracklet.apply_cmc`, batch via `tracker.apply_cmc_batch`), then assert P
-    either propagates as `A @ P @ A.T` (axis-aligned R) or is left untouched (cross-axis R).
+    either propagates as `A @ P @ A.T` relabelled with the corners the warp swaps (axis-aligned R) or is left untouched
+    (cross-axis R). The axis-aligned cases install the dense `_dense_covariance(8)`, whose top/bottom terms differ: the
+    default P is top/bottom symmetric, so it cannot tell a relabelled covariance from one left on the old indices.
     """
 
     @pytest.mark.parametrize(
-        "R_off",
+        ("R_off", "source"),
         [
-            np.array([[1.0, 0.0], [0.0, 1.0]]),  # identity (axis-aligned)
-            np.array([[1.0, 0.0], [0.0, -1.0]]),  # axis-flip (axis-aligned)
-            np.array([[2.0, 0.0], [0.0, 0.5]]),  # axis-aligned scale
+            pytest.param(np.array([[1.0, 0.0], [0.0, 1.0]]), [0, 1, 2, 3, 4, 5, 6, 7], id="identity"),
+            pytest.param(np.array([[1.0, 0.0], [0.0, -1.0]]), [0, 3, 2, 1, 4, 7, 6, 5], id="axis-flip"),
+            pytest.param(np.array([[2.0, 0.0], [0.0, 0.5]]), [0, 1, 2, 3, 4, 5, 6, 7], id="axis-aligned-scale"),
         ],
     )
-    def test_axis_aligned_updates_p(self, R_off: np.ndarray) -> None:
-        """Axis-aligned R must propagate into P via A @ P @ A.T."""
+    def test_axis_aligned_updates_p(self, R_off: np.ndarray, source: list[int]) -> None:
+        """Axis-aligned R must propagate into P via A @ P @ A.T, relabelled with the corners the warp swaps.
+
+        The y-flip turns the old bottom edge into the new top edge (``source`` lists the old state index each new slot
+        reads), so the bottom-edge variances and cross terms must move to the top slots together with the state.
+        """
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R_off
         tracklet = _xyxy_tracklet(bbox)
+        tracklet.state_estimator.kf.state_covariance = _dense_covariance(8)
         P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         tracklet.apply_cmc(H)
@@ -366,7 +373,7 @@ class TestXYXYCovarianceUpdate:
         A[2:4, 2:4] = R_off
         A[4:6, 4:6] = R_off
         A[6:8, 6:8] = R_off
-        expected_P = A @ P_before @ A.T
+        expected_P = (A @ P_before @ A.T)[np.ix_(source, source)]
         np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, expected_P, atol=1e-9)
 
     @pytest.mark.parametrize(
@@ -410,12 +417,17 @@ class TestXYXYCovarianceUpdate:
         np.testing.assert_array_equal(tracklet.state_estimator.kf.state_covariance, P_before)
 
     def test_axis_aligned_updates_p_batch_path(self) -> None:
-        """Batch path must update P when R is axis-aligned."""
+        """Batch path must update P when R is axis-aligned, moving the flipped edges' terms with their corners.
+
+        The y-flip swaps the top and bottom edges of the state, so the expected P is ``A @ P @ A.T`` with the
+        ``y1``/``y2`` and ``vy1``/``vy2`` indices exchanged.
+        """
         bbox = np.array([10.0, 20.0, 50.0, 80.0], dtype=np.float32)
         R = np.array([[1.0, 0.0], [0.0, -1.0]])
         H = np.zeros((2, 3), dtype=np.float32)
         H[:2, :2] = R
         tracklet = _xyxy_tracklet(bbox)
+        tracklet.state_estimator.kf.state_covariance = _dense_covariance(8)
         P_before = tracklet.state_estimator.kf.state_covariance.copy()
 
         CMC.apply_batch(H, [tracklet])
@@ -425,7 +437,8 @@ class TestXYXYCovarianceUpdate:
         A[2:4, 2:4] = R
         A[4:6, 4:6] = R
         A[6:8, 6:8] = R
-        expected_P = A @ P_before @ A.T
+        y_swap = [0, 3, 2, 1, 4, 7, 6, 5]
+        expected_P = (A @ P_before @ A.T)[np.ix_(y_swap, y_swap)]
         np.testing.assert_allclose(tracklet.state_estimator.kf.state_covariance, expected_P, atol=1e-9)
 
 
