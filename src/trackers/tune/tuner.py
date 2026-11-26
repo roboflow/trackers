@@ -19,7 +19,7 @@ import numpy as np
 import supervision as sv
 
 from trackers.core.base import BaseTracker, _nested_search_fields, _validate_search_space_entry
-from trackers.eval.evaluate import _detect_format, _get_paths, evaluate_mot_sequences
+from trackers.eval.evaluate import _detect_format, _get_ground_truth_path, evaluate_mot_sequences
 from trackers.eval.mot_classes import resolve_mot_class_config
 from trackers.eval.results import BenchmarkResult
 from trackers.io.frames import load_mot_frame_image
@@ -335,7 +335,7 @@ class Tuner:
     def _ground_truth_paths(self) -> list[Path]:
         """Resolve each selected sequence's ground-truth file in either ``{seq}.txt`` or ``{seq}/gt/gt.txt`` layout."""
         gt_format = _detect_format(self._gt_dir, self._sequences)
-        return [_get_paths(self._gt_dir, self._detections_dir, seq, gt_format)[0] for seq in self._sequences]
+        return [_get_ground_truth_path(self._gt_dir, seq, gt_format) for seq in self._sequences]
 
     def _build_tracker(self, trial_params: dict[str, Any]) -> BaseTracker:
         """Instantiate the tracker from sampled and fixed parameters."""
