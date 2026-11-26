@@ -137,6 +137,21 @@ class TestDefaultTrialParams:
         assert defaults["minimum_consecutive_frames"] == 2
 
 
+class TestTunerGroundTruthValidation:
+    def test_invalid_ground_truth_fails_before_tracking(self, tmp_path: Path) -> None:
+        """Reject an unnamed class before running the first tuning trial."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (gt_dir / "seq1.txt").write_text("1,1,10,20,100,80,1,-1,-1,-1\n")
+
+        with patch(
+            "trackers.tune.tuner._run_tracker_on_detections", wraps=tuner_module._run_tracker_on_detections
+        ) as tracking:
+            with pytest.raises(ValueError, match=r"seq1\.txt has classes \[-1\]"):
+                Tuner("bytetrack", gt_dir, det_dir, n_trials=1).run()
+
+        tracking.assert_not_called()
+
+
 class TestTunerFixedParams:
     def test_fixed_params_merged_into_best_result(self, tmp_path: Path) -> None:
         gt_dir, det_dir = _setup_dirs(tmp_path)
@@ -271,6 +286,15 @@ class TestTunerInit:
         tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
         assert tuner._sequences == ["seq1"]
 
+    def test_hidden_detection_files_are_skipped(self, tmp_path: Path) -> None:
+        """Skip hidden metadata and hidden sequences even when ground truth exists."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (det_dir / "._seq1.txt").write_text(_MOT_LINE)
+        (gt_dir / ".seq2.txt").write_text(_MOT_LINE)
+        (det_dir / ".seq2.txt").write_text(_MOT_LINE)
+        tuner = Tuner("bytetrack", gt_dir, det_dir)
+        assert tuner._sequences == ["seq1"]
+
     @pytest.mark.parametrize(
         "objective,initial_metrics,expected_metrics",
         [
@@ -297,6 +321,53 @@ class TestTunerInit:
         gt_dir, det_dir = _setup_dirs(tmp_path)
         tuner = Tuner("bytetrack", gt_dir, det_dir, objective="mota")
         assert tuner._objective_metric == "MOTA"
+
+
+class TestTunerGroundTruthLayout:
+    """Tuner accepts ground truth in the `{seq}/gt/gt.txt` layout."""
+
+    def test_runs_trial_with_seqmap_in_mot_ground_truth_root(self, tmp_path: Path) -> None:
+        """A root-level sequence map does not prevent tuning on nested ground truth."""
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE + "2,-1,10,20,100,80,0.9,1\n")
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "seq1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,20,100,80,1,1\n2,1,10,20,100,80,1,1\n")
+        seqmap = gt_dir / "seqmap.txt"
+        seqmap.write_text("name\nseq1\n")
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap, n_trials=1, seed=0)
+        tuner.run()
+
+        assert tuner.study is not None
+        assert len(tuner.study.trials) == 1
+        assert tuner.study.best_value == pytest.approx(0.5)
+
+    def test_accepts_mot_layout_ground_truth(self, tmp_path: Path) -> None:
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE)
+        gt_dir = tmp_path / "gt"
+        (gt_dir / "seq1" / "gt").mkdir(parents=True)
+        (gt_dir / "seq1" / "gt" / "gt.txt").write_text(_MOT_LINE)
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir)
+
+        assert tuner._sequences == ["seq1"]
+
+    def test_reports_missing_ground_truth_at_mot_layout_path(self, tmp_path: Path) -> None:
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE)
+        (det_dir / "seq2.txt").write_text(_MOT_LINE)
+        gt_dir = tmp_path / "gt"
+        (gt_dir / "seq1" / "gt").mkdir(parents=True)
+        (gt_dir / "seq1" / "gt" / "gt.txt").write_text(_MOT_LINE)
+
+        with pytest.raises(FileNotFoundError, match=r"seq2.*gt\.txt"):
+            Tuner("bytetrack", gt_dir, det_dir)
 
 
 class TestTunerSeed:

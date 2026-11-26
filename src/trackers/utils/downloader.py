@@ -10,8 +10,9 @@ import hashlib
 import os
 import shutil
 import stat
+import tempfile
 import zipfile
-from contextlib import suppress
+from contextlib import closing, suppress
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import requests
@@ -49,6 +50,10 @@ def _download_file(
     file's checksum is verified. The download is skipped when the
     checksum matches.
 
+    Each download owns a temporary directory on the destination filesystem.
+    The destination is replaced only after the complete payload passes the
+    optional checksum; failed or cancelled downloads leave it untouched.
+
     Returns:
         `True` if the file was downloaded, `False` if a cached version
         was used.
@@ -58,35 +63,33 @@ def _download_file(
     if destination.exists() and md5 is not None:
         if _compute_md5(destination) == md5:
             return False
-        destination.unlink()
 
-    temp_path = destination.with_suffix(".tmp")
+    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".trackers-") as temp_directory:
+        # The umask can remove owner access needed to create the staged payload.
+        os.chmod(temp_directory, stat.S_IRWXU)
+        temp_path = Path(temp_directory) / destination.name
+        with closing(requests.get(url, stream=True, timeout=timeout)) as response:
+            response.raise_for_status()
+            total = int(response.headers.get("content-length", 0))
+            progress = Progress(
+                TextColumn("[bold]{task.description}"),
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+            )
+            with open(temp_path, "wb") as file_handle, progress:
+                task = progress.add_task(destination.name, total=total or None)
+                for chunk in response.iter_content(chunk_size=_CHUNK_SIZE_BYTES):
+                    if chunk:
+                        file_handle.write(chunk)
+                        progress.update(task, advance=len(chunk))
 
-    response = requests.get(url, stream=True, timeout=timeout)
-    response.raise_for_status()
+        if md5 is not None:
+            actual = _compute_md5(temp_path)
+            if actual != md5:
+                raise RuntimeError(f"MD5 checksum mismatch for {destination.name}: expected {md5}, got {actual}")
 
-    total = int(response.headers.get("content-length", 0))
-
-    progress = Progress(
-        TextColumn("[bold]{task.description}"),
-        BarColumn(),
-        DownloadColumn(),
-        TransferSpeedColumn(),
-    )
-    with open(temp_path, "wb") as file_handle, progress:
-        task = progress.add_task(destination.name, total=total or None)
-        for chunk in response.iter_content(chunk_size=_CHUNK_SIZE_BYTES):
-            if chunk:
-                file_handle.write(chunk)
-                progress.update(task, advance=len(chunk))
-
-    temp_path.rename(destination)
-
-    if md5 is not None:
-        actual = _compute_md5(destination)
-        if actual != md5:
-            destination.unlink(missing_ok=True)
-            raise RuntimeError(f"MD5 checksum mismatch for {destination.name}: expected {md5}, got {actual}")
+        temp_path.replace(destination)
 
     return True
 
