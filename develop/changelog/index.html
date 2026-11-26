@@ -3377,6 +3377,9 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
 <li>
+<p><strong>Frames under non-ASCII paths on Windows</strong> — image-folder sources, MOT <code>img1</code> frames and the <code>trackers inspect</code> commands failed to read or save images whose path had characters outside ASCII, such as an accented, Cyrillic or CJK folder name, because OpenCV reads Windows paths in the ANSI code page. These files are now read and written through NumPy and decoded or encoded with OpenCV.</p>
+</li>
+<li>
 <p><strong>CMC no longer swaps the corner velocities of a shrinking <code>XYXYStateEstimator</code> box</strong> — <code>_warp_kalman_states</code> sorted XYXY velocities per axis, so with <code>BoTSORTTracker</code>, <code>McByteTracker</code> or <code>OCSORTTracker</code> on the non-default XYXY estimator, every CMC step, even an identity transform, swapped a shrinking box's velocities and the filter predicted it growing. Velocities are no longer sorted: each is mapped through the linear part and stays with the corner that becomes the new edge, so for an upright box a warped velocity equals the motion of the warped box as long as one step does not invert the box. (<a href="https://github.com/roboflow/trackers/pull/662">#662</a>)</p>
 </li>
 <li>
