@@ -338,6 +338,29 @@ class TestEvaluateMOTSequencesDiscovery:
     """Sequence discovery must ignore hidden entries in both supported layouts."""
 
     @pytest.mark.parametrize(
+        "gt_relpath",
+        [
+            pytest.param("sequence1.txt", id="flat-layout"),
+            pytest.param("sequence1/gt/gt.txt", id="mot-layout"),
+        ],
+    )
+    def test_seqmap_inside_ground_truth_root_preserves_layout(self, tmp_path: Path, gt_relpath: str) -> None:
+        """A sequence map next to ground truth does not select the wrong layout."""
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / gt_relpath
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,10,20,20,1,1\n")
+        seqmap = gt_dir / "seqmap.txt"
+        seqmap.write_text("name\nsequence1\n")
+        tracker_dir = tmp_path / "trackers"
+        tracker_dir.mkdir()
+        (tracker_dir / "sequence1.txt").write_text("1,1,10,10,20,20,0.9,1\n")
+
+        result = evaluate_mot_sequences(gt_dir, tracker_dir, seqmap=seqmap, metrics=["CLEAR"])
+
+        assert list(result.sequences) == ["sequence1"]
+
+    @pytest.mark.parametrize(
         ("gt_relpath", "hidden_relpath", "hidden_sequence"),
         [
             pytest.param("sequence1.txt", ".hidden.txt", ".hidden", id="flat-layout"),
