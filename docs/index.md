@@ -254,7 +254,7 @@ Object detection finds and classifies objects in a single image frame. Multi-obj
 
 <!-- BENCH-XREF derived-claim: "McByte leads HOTA on every benchmark at default parameters" depends on McByte being the bolded HOTA best in ALL FOUR [docs/evaluations/results.md](evaluations/results.md) Default tables (mot17/sportsmot/soccernet/dancetrack). If any Default table's HOTA leader changes, re-verify this sentence. -->
 
-Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters but requires optional SAM/Cutie mask dependencies; BoT-SORT is a strong choice when camera motion is significant; pass each frame or a precomputed camera-motion transform to enable compensation. Use SORT if speed or device constraints require the lightest possible tracker. See the [tracker comparison](evaluations/results.md) for benchmark scores.
+Start with ByteTrack — it's the default, has no extra dependencies, handles variable-confidence detectors well, and runs at real time latency. For the highest accuracy, McByte leads HOTA on every benchmark at default parameters with the mask-enabled configuration (the default constructor runs without masks and needs no SAM/Cutie dependencies); BoT-SORT is a strong choice when camera motion is significant; pass each frame or a precomputed camera-motion transform to enable compensation. Use SORT if speed or device constraints require the lightest possible tracker. See the [tracker comparison](evaluations/results.md) for benchmark scores.
 
 **Do I need a specific detector?**
 
@@ -266,7 +266,7 @@ MOT17 and SportsMOT are supported for download and evaluation. Use `trackers dow
 
 **How do I evaluate my tracker?**
 
-Run `trackers eval` against a directory of ground-truth MOT-format text files. The evaluation pipeline computes HOTA, IDF1, and MOTA and prints a per-sequence and combined score table. See the [evaluation guide](evaluations/evaluate.md) for the full workflow.
+Run `trackers eval` against a directory of ground-truth MOT-format text files. By default the evaluation computes the CLEAR metrics (including MOTA); pass `--metrics '[CLEAR,HOTA,Identity]'` to also get HOTA and IDF1. It prints a per-sequence and combined score table. See the [evaluation guide](evaluations/evaluate.md) for the full workflow.
 
 ---
 
