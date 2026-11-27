@@ -48,8 +48,8 @@ def conversion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespa
 
     @contextmanager
     def safe_globals(allowed: list[Any]):
-        """Record the bounded allowlist used while loading the source."""
-        calls["allowlists"].append(allowed)
+        """Resolve callable names as PyTorch 2.5 does, without tuple aliases."""
+        calls["allowlists"].append({f"{item.__module__}.{item.__name__}": item for item in allowed})
         yield
 
     def load(source: io.BytesIO, *, map_location: str, weights_only: bool) -> dict[str, Any]:
@@ -123,6 +123,7 @@ def test_prepare_sports_preserves_inference_tensors_and_preprocessing(
     tmp_path: Path, conversion: SimpleNamespace
 ) -> None:
     """A user-supplied checkpoint becomes a reusable, documented model directory."""
+    scalar_module = numpy_scalar.__module__
     directory = prepare_sports_reid_model(conversion.checkpoint, cache_dir=tmp_path / "cache")
 
     assert directory.is_dir()
@@ -152,13 +153,22 @@ def test_prepare_sports_preserves_inference_tensors_and_preprocessing(
     }
     assert preprocessing == expected_preprocessing
     assert conversion.calls["loads"] == [{"data": conversion.data, "map_location": "cpu", "weights_only": True}]
-    expected_allowed = {
-        (numpy_scalar, "numpy.core.multiarray.scalar"),
-        np.dtype,
-        np.dtypes.Float32DType,
-        np.dtypes.Float64DType,
+    allowed = conversion.calls["allowlists"][0]
+    assert set(allowed) == {
+        "numpy.core.multiarray.scalar",
+        "numpy.dtype",
+        "numpy.dtypes.Float32DType",
+        "numpy.dtypes.Float64DType",
     }
-    assert set(conversion.calls["allowlists"][0]) == expected_allowed
+    scalar_loader = allowed["numpy.core.multiarray.scalar"]
+    # Newer PyTorch resolves __qualname__; both loaders must see the same name.
+    assert scalar_loader.__qualname__ == "scalar"
+    for dtype in (np.float32, np.float64):
+        value = dtype(-1.25)
+        restored = scalar_loader(value.dtype, value.tobytes())
+        assert type(restored) is dtype
+        assert restored.tobytes() == value.tobytes()
+    assert numpy_scalar.__module__ == scalar_module
     provenance = json.loads((directory / "provenance.json").read_text())
     assert provenance["source_sha256"] == hashlib.sha256(conversion.data).hexdigest()
     assert provenance["excluded_training_head_keys"] == ["classifier.bias", "classifier.weight"]

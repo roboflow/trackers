@@ -130,10 +130,19 @@ def _convert_checkpoint(data: bytes | None, directory: Path) -> None:
     if data is None:
         data = _download_checkpoint()
 
+    def scalar(dtype: np.dtype[Any], raw: bytes) -> Any:
+        """Rebuild the checkpoint's NumPy training scalars without changing their values."""
+        return numpy_scalar(dtype, raw)
+
+    # PyTorch 2.5 requires callable entries rather than (callable, name) tuples.
+    # Give this local adapter the checkpoint's legacy name without mutating NumPy.
+    # Older PyTorch uses __name__; newer versions use __qualname__.
+    scalar.__module__ = "numpy.core.multiarray"
+    scalar.__qualname__ = "scalar"
     # These four globals are needed only by the verified file's NumPy training
     # metadata. Keep weights_only=True; never fall back to unrestricted pickle.
     allowed = [
-        (numpy_scalar, "numpy.core.multiarray.scalar"),
+        scalar,
         np.dtype,
         np.dtypes.Float32DType,
         np.dtypes.Float64DType,
