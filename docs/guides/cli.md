@@ -537,7 +537,7 @@ Each tab lists all arguments accepted by that `trackers inspect` subcommand.
 
 === "mcbyteplusplus"
 
-    `trackers inspect mcbyteplusplus` replays detector boxes through `McBytePlusPlusTracker` with EdgeTAM masks always enabled. McByte++ includes dedicated conditional CMC, enabled by default with ORB at downscale 4. Long-term re-identification is planned separately. Install `trackers[edgetam]`.
+    `trackers inspect mcbyteplusplus` replays detector boxes through `McBytePlusPlusTracker` with EdgeTAM masks always enabled. McByte++ includes dedicated conditional CMC, enabled by default with ORB at downscale 4. Install `trackers[edgetam]`. Optional long-term re-ID additionally requires `trackers[reid]` and an explicit `--reid.model`, for example `mcbyteplusplus_sports`; joining settings use `--tracker.reid_joining_config.*`. Once a model is selected, re-ID feature extraction pauses for strong estimated camera motion and subject occlusion are enabled by default, together with pending identity deadline extensions and historical buffering. Historical text-output collection is automatic. See the [McByte++ guide](../trackers/mcbyteplusplus.md#optional-long-term-re-identification).
 
     | Group          | Settings                                                                                                                                                                                                                                                    |
     | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

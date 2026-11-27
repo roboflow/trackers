@@ -70,9 +70,9 @@ The `detection` extra installs `inference-models`, enabling the CLI to run detec
     uv pip install "trackers[detection]"
     ```
 
-### ReID (BoT-SORT appearance)
+### ReID (appearance and long-term joining)
 
-The `reid` extra installs the standalone [`reid`](https://github.com/roboflow/re-ID) package, which brings PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet, FastReID SBS, and `timm:` backbones) and BoT-SORT appearance association.
+The `reid` extra installs the standalone [`reid`](https://github.com/roboflow/re-ID) package, which brings PyTorch, timm, Hugging Face Hub, safetensors, Pillow, and gdown for ReID model loading (OSNet, FastReID SBS, and `timm:` backbones). Trackers uses it for BoT-SORT appearance association and optional McByte++ long-term identity joining. The package is pinned to `reid==0.1.0`.
 
 === "pip"
 
@@ -86,7 +86,7 @@ The `reid` extra installs the standalone [`reid`](https://github.com/roboflow/re
     uv pip install "trackers[reid]"
     ```
 
-Use via `from reid import ReIDModel` and `BoTSORTTracker(reid_model=...)`, or via CLI flags such as `--reid.enable` and `--reid.architecture` on `trackers track` command (BoT-SORT only). See the [Re-ID guide](reid.md) for loading an encoder and choosing thresholds.
+Use via `from reid import ReIDModel` and `BoTSORTTracker(reid_model=...)` or `McBytePlusPlusTracker(reid_model=...)`. The generic `trackers track` command supports `--reid.model`, `--reid.device` and `--reid.architecture`. McByte++ requires an explicit model; `--reid.model mcbyteplusplus_sports` selects the verified original sports checkpoint. See the [Re-ID guide](reid.md) for appearance association and the [McByte++ guide](../trackers/mcbyteplusplus.md#optional-long-term-re-identification) for joining and historical outputs.
 
 !!! tip "GPU Acceleration"
 

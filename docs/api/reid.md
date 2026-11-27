@@ -1,12 +1,12 @@
 ---
-description: Python API reference for the ReID encoder protocol, feature bank, appearance association utilities, and threshold-selection plots in Roboflow Trackers.
+description: Python API reference for ReID encoders, appearance association, long-term identity joining, model preparation, and threshold-selection tools in Roboflow Trackers.
 ---
 
 # ReID API
 
 The encoder protocol, feature bank, and NumPy helpers are included in the base package. For model loading and plotting, install the `reid` extra (`pip install "trackers[reid]"`; see the [install guide](../guides/install.md)).
 
-This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.reid`. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
+This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appearance association helpers, and the threshold-selection plots in `trackers.reid`. It also covers `LongTermReIDConfig`, `LongTermReID`, and `prepare_sports_reid_model` for optional long-term identity joining. For enabling appearance on BoT-SORT and for benchmark results, see the [ReID appearance guide](../guides/reid.md). For joining and historical output in McByte++, see the [McByte++ guide](../trackers/mcbyteplusplus.md#optional-long-term-re-identification). Model loading and gallery evaluation are in the standalone [`reid`](https://github.com/roboflow/re-ID) package.
 
 ## ReIDConfig
 
@@ -15,6 +15,20 @@ This page covers `ReIDConfig`, the `ReIDEncoder` protocol, `FeatureBank`, appear
 ## ReIDEncoder
 
 ::: trackers.reid.encoder.ReIDEncoder
+
+## LongTermReIDConfig
+
+Settings for optional trajectory joining, distinct from BoT-SORT's association configuration. Subject-occlusion filtering of new re-ID features, pausing the affected pending identity decision deadline and historical buffering default to enabled. McByte++ separately enables the camera-motion-triggered re-ID pause; the reusable joining component does not interpret CMC estimates. See [McByte++ long-term tracking](../trackers/mcbyteplusplus.md#optional-long-term-re-identification) for output buffering and examples.
+
+::: trackers.reid.long_term_config.LongTermReIDConfig
+
+## LongTermReID
+
+::: trackers.reid.long_term.LongTermReID
+
+## prepare_sports_reid_model
+
+::: trackers.reid.sports_model.prepare_sports_reid_model
 
 ## FeatureBank
 

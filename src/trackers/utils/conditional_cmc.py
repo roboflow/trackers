@@ -6,9 +6,9 @@
 
 """Conditional camera motion compensation, independently usable by trackers.
 
-The ORB preset and XCYCWH state warp follow the original McByte++ research version. Estimator organization and the
-alternative methods follow Trackers' CMC. This separate implementation adds transform rejection and safe per-track state
-updates without changing CMC.
+The ORB preset and XCYCWH state warp follow the original McByte++. Estimator organization and the alternative methods
+follow Trackers' CMC. This separate implementation adds transform rejection and safe per-track state updates without
+changing CMC.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class ConditionalCMCConfig:
     is checked against the configured scale limits before it can correct
     predicted Kalman states, ahead of detection-to-track association.
 
-    The defaults select ORB with downscale 4 and the research McByte++ match
+    The defaults select ORB with downscale 4 and the original McByte++ match
     and scale thresholds. The selected method processes one image at a time.
     Scale checks apply to all four methods; feature-matching settings
     apply only to ORB/SIFT, and the ``sof_`` and ``ecc_`` settings apply only
@@ -78,7 +78,7 @@ class ConditionalCMCConfig:
         minimum_matches:
             ORB/SIFT candidate matches required after descriptor-ratio and
             spatial-displacement filtering, but before statistical filtering
-            of displacement outliers. Defaults to the research ORB value of
+            of displacement outliers. Defaults to the original McByte++ ORB value of
             12. At least five matches must remain after statistical filtering
             before RANSAC is attempted. Must be an integer of at least five;
             booleans are not accepted. Sparse optical flow independently
@@ -95,7 +95,7 @@ class ConditionalCMCConfig:
             Inclusive upper limit for those column norms. Defaults to 3.0.
             Both scale limits must be finite and satisfy
             ``0 < minimum_scale <= 1 <= maximum_scale``. The defaults match
-            the research tracker's active ORB scale guard. These settings
+            the original McByte++ tracker's active ORB scale guard. These settings
             are checked by both ``estimate`` and ``apply_batch``.
 
         ransac_reproj_threshold:
@@ -234,16 +234,19 @@ class ConditionalCMC:
 
     ``apply_batch`` validates the matrix again, then computes candidate means
     and covariances before modifying any track. For XCYCWH states, it retains
-    the research linear transformation of centre, size and both velocity pairs.
+    the original McByte++ linear transformation of centre, size and both velocity pairs.
     A candidate with non-finite values or non-positive dimensions is rejected
     for that track, retaining its uncorrected prediction and covariance. This
-    prevents invalid updates but deliberately retains the research size
+    prevents invalid updates but deliberately retains the original McByte++ size
     approximation when dimensions remain positive. XYXY and XCYCSR use
     Trackers' existing representation-specific transformations.
 
     Mask images and identities are never transformed. Call ``reset`` between
     sequences. ``frames_failed`` counts OpenCV failures, rejected affine
     estimates and insufficient sparse-flow correspondences since reset.
+    ``last_estimate_available`` distinguishes a successfully fitted, accepted
+    transform (including stationary motion) from an identity fallback. It does
+    not certify image sharpness or the accuracy of the estimated motion.
 
     Typical usage within a tracker's prediction and association loop::
 
@@ -265,7 +268,7 @@ class ConditionalCMC:
     loop, perform association or draw annotations itself.
 
     Args:
-        cfg: Configuration; defaults to ORB, downscale 4 and research guards.
+        cfg: Configuration; defaults to ORB, downscale 4 and the original McByte++ acceptance checks.
     """
 
     def __init__(self, cfg: ConditionalCMCConfig | None = None) -> None:
@@ -340,8 +343,42 @@ class ConditionalCMC:
     def reset(self) -> None:
         """Clear sequence references and failure counts; retain settings and detectors."""
         self.frames_failed = 0
+        self._last_estimate_available = False
         self._frame_shape: tuple[int, int] | None = None
         self._clear_reference()
+
+    @property
+    def last_estimate_available(self) -> bool:
+        """Whether the latest call fitted a transform that passed validation.
+
+        False after reset, initialization, missing/insufficient image evidence, a rejected transform or an estimation
+        failure. A successful identity transform is True. Each estimate clears the previous call's status.
+        """
+        return self._last_estimate_available
+
+    @staticmethod
+    def motion_score(affine: np.ndarray, image_shape: tuple[int, int]) -> float:
+        """Measure normalized displacement from an accepted CMC transform.
+
+        Args:
+            affine: Accepted previous-to-current 2x3 transform in original
+                image pixels, as returned by ``estimate``.
+            image_shape: Original image ``(height, width)`` with positive sizes.
+
+        Returns:
+            Maximum displacement of four corners and the centre, divided by
+            the image diagonal. Includes translation, rotation and scale when
+            represented by the estimator. This measures displacement between
+            supplied images, not blur or speed; it does not normalize by time.
+            Call only when ``last_estimate_available`` is True.
+        """
+        height, width = image_shape
+        points = np.array(
+            [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1], [(width - 1) / 2, (height - 1) / 2]],
+            dtype=float,
+        )
+        displacement = points @ affine[:, :2].T + affine[:, 2] - points
+        return float(np.linalg.norm(displacement, axis=1).max() / np.hypot(width, height))
 
     def _clear_reference(self) -> None:
         """Discard correspondence history without resetting diagnostics or settings."""
@@ -352,7 +389,7 @@ class ConditionalCMC:
         self._prev_points: np.ndarray | None = None
 
     def _is_valid_affine(self, affine_mtx: np.ndarray | None) -> bool:
-        """Check shape, finite entries and the research column-norm scale bounds."""
+        """Check shape, finite entries and the original McByte++ column-norm scale bounds."""
         if affine_mtx is None or affine_mtx.shape != (2, 3) or not np.isfinite(affine_mtx).all():
             return False
         with np.errstate(over="ignore", invalid="ignore"):
@@ -374,11 +411,14 @@ class ConditionalCMC:
             resolution changes, unavailable features, rejected transforms and
             expected OpenCV failures return identity. A supplied real image
             advances or clears the reference even when compensation is skipped.
+            ``last_estimate_available`` is True only for a fitted transform
+            accepted by validation, not for initialization or fallback identity.
 
         Raises:
             ValueError: If the image or detection-array contract is invalid.
             Exception: Unexpected implementation errors propagate to the caller.
         """
+        self._last_estimate_available = False
         identity = np.eye(2, 3, dtype=np.float32)
         if frame_bgr is None:
             return identity
@@ -411,12 +451,14 @@ class ConditionalCMC:
             # A failed matcher/alignment must not leave a multi-frame reference
             # that would later be treated as a single-update camera correction.
             self.frames_failed += 1
+            self._last_estimate_available = False
             self._clear_reference()
             logger.warning("Conditional CMC: OpenCV estimation failed (%s), using identity", error)
             return identity
         with np.errstate(over="ignore", invalid="ignore"):
             affine = affine.astype(np.float32, copy=False) if affine is not None else None
         if affine is None or not self._is_valid_affine(affine):
+            self._last_estimate_available = False
             self.frames_failed += 1
             logger.debug("Conditional CMC: rejected affine estimate, using identity")
             return identity
@@ -540,6 +582,7 @@ class ConditionalCMC:
                     ransacReprojThreshold=self.cfg.ransac_reproj_threshold,
                 )
                 if affine_est is not None:
+                    self._last_estimate_available = True
                     affine_mtx = affine_est.astype(np.float32)
                     if self.downscale > 1:
                         affine_mtx[0, 2] *= self.downscale
@@ -619,6 +662,7 @@ class ConditionalCMC:
                 method=cv2.RANSAC,
             )
             if affine_est is not None:
+                self._last_estimate_available = True
                 affine_mtx = affine_est.astype(np.float32)
 
                 # Handle downscale translation back to original image coords
@@ -692,6 +736,7 @@ class ConditionalCMC:
             self.cfg.ecc_gaussian_filter_size,
         )
         if affine_est is not None:
+            self._last_estimate_available = True
             affine_mtx = affine_est.astype(np.float32)
             if self.downscale > 1:
                 affine_mtx[0, 2] *= self.downscale
@@ -784,7 +829,7 @@ class ConditionalCMC:
           pairs ``(xc, yc)``, ``(w, h)``, ``(vx, vy)`` and ``(vw, vh)``.
           Add translation only to the centre. With the four copies of that
           linear part forming block-diagonal matrix ``M``, transform the
-          covariance as ``M @ P @ M.T``. This preserves the research McByte++
+          covariance as ``M @ P @ M.T``. This preserves the original McByte++
           size approximation, including its limitations under rotation.
         - XYXY: Transform all four box corners and take their axis-aligned
           enclosure. For each enclosing edge, use the corresponding spatial

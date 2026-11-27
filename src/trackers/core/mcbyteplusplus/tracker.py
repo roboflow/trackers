@@ -4,11 +4,11 @@
 # Licensed under the Apache License, Version 2.0 [see LICENSE for details]
 # ------------------------------------------------------------------------
 
-"""McByte++ tracking with Kalman motion, camera compensation and optional EdgeTAM masks.
+"""McByte++ tracking with Kalman motion, camera compensation, optional EdgeTAM masks and re-ID joining.
 
 The tracker owns detection association and mask creation, refresh and exclusion policies. The shared mask manager
 coordinates generation and propagation; its default EdgeTAM backend owns model inference and bounded video-session
-history.
+history. The optional long-term re-ID component owns public identity resolution and buffered historical output.
 """
 
 import logging
@@ -33,6 +33,11 @@ from trackers.core.mcbyteplusplus.mask_association import (
 )
 from trackers.core.mcbyteplusplus.tracklet import McBytePlusPlusTracklet
 from trackers.core.mcbyteplusplus.utils import _get_alive_tracklets
+from trackers.reid.encoder import ReIDEncoder
+from trackers.reid.long_term import LongTermReID
+from trackers.reid.long_term_config import LongTermReIDConfig
+from trackers.reid.long_term_encoder import _load_long_term_encoder
+from trackers.reid.occlusion import foreground_overlap
 from trackers.utils.cmc import CMC, CMCConfig, CMCMethod
 from trackers.utils.conditional_cmc import ConditionalCMC, ConditionalCMCConfig
 from trackers.utils.detections import default_confidences
@@ -169,7 +174,7 @@ def _build_default_mask_manager(config: McBytePlusPlusMaskConfig) -> MaskManager
 
 
 class McBytePlusPlusTracker(BaseTracker):
-    """Track detections with Kalman motion, camera compensation and optional EdgeTAM masks.
+    """Track detections with Kalman motion, CMC, optional EdgeTAM masks and long-term re-ID joining.
 
     This independent tracker associates detections in three stages: high-confidence
     detections with confirmed and lost tracks, low-confidence detections with the
@@ -213,13 +218,23 @@ class McBytePlusPlusTracker(BaseTracker):
     ``edgetam_config``. It limits retained history rather than guaranteeing a fixed
     RAM/VRAM budget; image resolution and object count also affect memory use.
 
-    Internal tracklet IDs own masks; public IDs are returned to users. This
-    separation prepares for planned long-term tracking with re-identification
-    (re-ID): multiple tracklets could later share one public identity while each
-    keeps its own mask ownership. Both IDs currently have the same assigned value;
-    long-term re-ID is not implemented yet. Conditional CMC estimates motion on
+    Internal tracklet IDs own motion state and masks; public IDs are returned to
+    users. Optional long-term re-identification (re-ID) joins new tracklets to
+    terminated identities using mutual-best appearance and disjoint observation
+    intervals. Each tracklet keeps its own mask ownership and Kalman state.
+    Pending public identities are returned as -1; earlier eligible observations
+    can be recovered through ``pop_finalized_results`` and ``finish``. Re-ID is
+    disabled unless an encoder or model source is supplied, independently of masks.
+
+    With re-ID enabled, new appearance feature extraction pauses by default
+    during strong estimated camera motion and for individually occluded subjects.
+    These policies also extend pending identity decision deadlines. Previously
+    collected features can still reconnect identities while extraction is paused.
+    Historical buffering is enabled by default to recover pending observations.
+
+    Conditional CMC estimates motion on
     each accepted image and applies only validated corrections. Its default
-    centre/width/height state transform retains the research calculations;
+    centre/width/height state transform retains the original McByte++ calculations;
     non-finite candidates or non-positive dimensions leave that track's
     prediction and covariance unchanged. Other state layouts retain their
     existing transformation rules. See ``update`` for timing and failure rules.
@@ -238,14 +253,14 @@ class McBytePlusPlusTracker(BaseTracker):
         high_conf_det_threshold: Inclusive high-confidence cutoff, strictly above 0.1.
             Scores at or below 0.1 are discarded; intermediate scores enter stage two.
         enable_cmc: Enable camera motion compensation on BGR images.
-        cmc_method: Camera motion estimator, defaulting to the research ORB preset.
+        cmc_method: Camera motion estimator, defaulting to the original McByte++ ORB preset.
         cmc_downscale: Downscale factor for camera motion estimation.
         enable_conditional_cmc: Use conditional CMC for all four estimation methods.
             Defaults to True. False selects the original shared CMC implementation
             for comparisons. Has no effect when enable_cmc is False.
         cmc_minimum_matches: Conditional ORB/SIFT candidate matches required before
             statistical filtering; at least five must remain afterwards. Defaults
-            to the research ORB value of 12. Does not affect optical flow or ECC.
+            to the original McByte++ ORB value of 12. Does not affect optical flow or ECC.
         cmc_minimum_scale: Conditional CMC's minimum affine column norm, default 0.3.
         cmc_maximum_scale: Conditional CMC's maximum affine column norm, default 3.0.
             Bounds must be finite, positive and include one. Conditional settings
@@ -279,6 +294,34 @@ class McBytePlusPlusTracker(BaseTracker):
             Independent of enable_mask_refresh; with refresh disabled, excluded masks
             stay excluded until removal or reset. When false, association uses
             available propagated masks without persistent exclusion.
+        reid_model: Optional encoder implementing ``ReIDEncoder``, or a Roboflow
+            model source. The explicit ``"mcbyteplusplus_sports"`` source loads
+            the verified original sports checkpoint through a cached conversion.
+            A string source uses automatic device selection. Supply an already
+            loaded encoder to select its device/preprocessing explicitly.
+            ``None`` disables joining and preserves ordinary tracklet identities.
+        reid_joining_config: Appearance sampling, joining and historical buffering
+            settings. Requires ``reid_model``. Defaults to ``LongTermReIDConfig()``
+            when joining is enabled. Historical buffering, subject-occlusion
+            filtering of new re-ID features and pausing affected pending
+            identity deadlines are enabled in that configuration. The occlusion
+            policy uses current detector boxes and requires neither masks nor CMC.
+        enable_reid_camera_motion_pause: Skip new re-ID feature extraction for
+            all subjects and pause pending identity decision ages during strong
+            estimated camera motion. Defaults to True. Requires conditional CMC when CMC and re-ID are
+            enabled; has no effect when either is disabled. Existing descriptors
+            can still join, and termination/finish still resolve pending output.
+            Set False to use re-ID with the legacy regular CMC implementation.
+            For complete trajectories or accuracy evaluation, keep
+            ``reid_joining_config.buffer_results=True``. Disabling buffering
+            while pausing is not recommended: longer pending periods can omit
+            valid track fragments or entire tracklets from text output.
+        reid_camera_motion_threshold: Positive finite displacement threshold,
+            as a fraction of the image diagonal. Defaults to 0.02. Pause only
+            above this value, using the largest displacement of image corners
+            and centre. Initialization/unavailable estimates do not pause.
+            This is a motion proxy, not a blur measurement; frame skipping
+            affects displacement. No additional image-quality pass is run.
 
     Example:
         >>> tracker = McBytePlusPlusTracker(enable_cmc=False)
@@ -322,6 +365,10 @@ class McBytePlusPlusTracker(BaseTracker):
         cmc_minimum_matches: int = 12,
         cmc_minimum_scale: float = 0.3,
         cmc_maximum_scale: float = 3.0,
+        reid_model: ReIDEncoder | str | None = None,
+        reid_joining_config: LongTermReIDConfig | None = None,
+        enable_reid_camera_motion_pause: bool = True,
+        reid_camera_motion_threshold: float = 0.02,
     ) -> None:
         self.maximum_frames_without_update = self._compute_maximum_frames_without_update(lost_track_buffer, frame_rate)
         self.maximum_time_without_update = lost_track_buffer / 30.0
@@ -348,6 +395,26 @@ class McBytePlusPlusTracker(BaseTracker):
                 raise ValueError(f"{name} must be a positive integer.")
         if edgetam_config is not None and (mask_manager is not None or not enable_mask_manager):
             raise ValueError("edgetam_config requires enable_mask_manager=True without a custom mask_manager.")
+        if reid_joining_config is not None and reid_model is None:
+            raise ValueError("reid_joining_config requires reid_model; supplying a model enables long-term joining.")
+        if not isinstance(enable_reid_camera_motion_pause, bool):
+            raise ValueError("enable_reid_camera_motion_pause must be a boolean.")
+        if (
+            isinstance(reid_camera_motion_threshold, bool)
+            or not np.isfinite(reid_camera_motion_threshold)
+            or reid_camera_motion_threshold <= 0
+        ):
+            raise ValueError("reid_camera_motion_threshold must be finite and positive.")
+        if enable_reid_camera_motion_pause and reid_model is not None and enable_cmc and not enable_conditional_cmc:
+            raise ValueError("Re-ID camera-motion pausing requires conditional CMC; set enable_conditional_cmc=True.")
+        self.enable_reid_camera_motion_pause = enable_reid_camera_motion_pause
+        self.reid_camera_motion_threshold = reid_camera_motion_threshold
+        if isinstance(reid_model, str):
+            reid_model = _load_long_term_encoder(reid_model)
+        self.reid_joiner = LongTermReID(reid_model, reid_joining_config) if reid_model is not None else None
+        self._reid_step = 0
+        self._pending_reid_removals: set[int] = set()
+        self._finished = False
 
         self.minimum_consecutive_frames = minimum_consecutive_frames
         self.track_activation_threshold = track_activation_threshold
@@ -425,6 +492,9 @@ class McBytePlusPlusTracker(BaseTracker):
         """Return alive confirmed motion estimates with their public identities."""
         result = super().tracked_objects
         result.tracker_id = np.array([t.public_id for t in self.tracks if t.tracker_id != -1], dtype=int)
+        if self.reid_joiner is not None:
+            result.data["tracklet_id"] = np.array([t.tracker_id for t in self.tracks if t.tracker_id != -1], dtype=int)
+            result.data["reid_pending"] = result.tracker_id < 0
         return result
 
     def update(
@@ -459,8 +529,31 @@ class McBytePlusPlusTracker(BaseTracker):
            high-confidence detections. Prune tracks beyond their lost-track budget.
         5. Assess masks against matched detection boxes after association. Store a
            copy of the accepted RGB image with its boxes and queue eligible mask
-           creation, refresh and removal work for the next image. Finally map
-           internal tracklet IDs to public IDs in the returned detections.
+           creation, refresh and removal work for the next image.
+        6. When re-ID is enabled, archive truly terminated identities, extract
+           features from eligible current BGR crops, and join young confirmed
+           tracklets to compatible terminated identities. Finalize age-expired
+           observed identities and queue their earlier pending observations.
+           Map internal IDs to public IDs only after masks have consumed the
+           internal owners. Without re-ID, public and internal IDs remain equal.
+
+        Camera-motion pausing of re-ID feature extraction is enabled by default
+        when re-ID is used and reuses step three's accepted conditional CMC
+        estimate. A flagged image suppresses new features for both pending
+        and established identities and discounts one advancing step from pending
+        decision ages, subject to the configured cap. Previously stored features
+        can still reconnect. Sampling intervals, mask/lost-track clocks and
+        processing-frame references advance normally. Duplicate/missing images
+        and unavailable estimates never reuse a previous image's motion flag.
+        Termination and ``finish`` finalize pending output even during a pause.
+
+        With the default ``reid_joining_config.pause_reconnection_on_occlusion=True``, a
+        current matched box rejected by the feature-occlusion filter also pauses
+        its pending identity's deadline. This check runs on every advancing
+        image, including steps between scheduled extractions and before track
+        confirmation. It uses current detector boxes, not predicted/lost boxes.
+        Other crop-quality rejections do not pause the deadline. Camera-motion
+        and occlusion pauses count once per step and share the configured cap.
 
         A displaced mask first detected in step five has already been available
         to this call's association; exclusion affects later calls. An excluded
@@ -482,6 +575,16 @@ class McBytePlusPlusTracker(BaseTracker):
         accepted image/box pairs, queued prompts and creation counts are retained;
         their masks are not reused as evidence on the duplicate call. A non-finite
         or backward timestamp skips all tracking work after input validation.
+
+        Re-ID's sampling and decision clocks advance once per accepted,
+        non-duplicate update, including ``frame=None``; timestamp gaps do not
+        create extra samples or decision steps. Duplicates still have distinct
+        processing references for historical output but do not extract features.
+        Missing images retain existing features and pending history. Original
+        tracklet birth, rather than confirmation time, starts the joining window.
+        Currently lost pending identities remain reserved until observation,
+        true termination or ``finish`` resolves them. Model failures propagate;
+        no silent fallback disables re-ID.
 
         A mask-pipeline out-of-memory error resets mask state, logs the failure
         and continues association without masks. Three such failures without a
@@ -516,6 +619,12 @@ class McBytePlusPlusTracker(BaseTracker):
             high-confidence detections considered for new tracks. Lost-track
             predictions are not added. If a timestamp causes the whole update to
             be skipped, all input detections are returned with IDs set to ``-1``.
+            With re-ID enabled, eligible unresolved identities also have ``-1``;
+            row-aligned ``data["reid_pending"]`` distinguishes them from ordinary
+            unassigned rows and ``data["tracklet_id"]`` retains the internal ID.
+            These reserved fields are added on accepted updates only. Historical
+            finalized rows are retrieved separately through
+            ``pop_finalized_results``/``finish`` and never replace live output.
 
         Raises:
             ValueError: If boxes, confidences or the supplied image are invalid,
@@ -524,17 +633,30 @@ class McBytePlusPlusTracker(BaseTracker):
             RuntimeError: If mask inference or its returned object IDs violate
                 the backend contract, except for the handled out-of-memory case.
                 Other backend exceptions also propagate after mask-state cleanup.
+                Also raised after ``finish`` until ``reset``, or if long-term
+                identity ownership/output uniqueness is violated.
 
         Warns:
             UserWarning: If a timestamp is non-finite, backward or duplicated.
         """
+        if self._finished:
+            raise RuntimeError("This tracker is finished; call reset() before update().")
         self._validate_inputs(detections, frame)
         timing = self._predict_timing(timestamp)
         if timing.skip_update:
             return self._detections_for_skipped_update(detections)
 
         self.frame_id += 1
+        if not timing.skip_predict:
+            self._reid_step += 1
         current_frame = frame
+        occlusion_pause = (
+            self.reid_joiner is not None
+            and self.reid_joiner.config.pause_reconnection_on_occlusion
+            and current_frame is not None
+            and not timing.skip_predict
+        )
+        reid_matched_boxes: dict[int, np.ndarray] = {}
         preserve_mask_observation = timing.skip_predict and current_frame is not None and self.mask_manager is not None
         out_det_indices: list[int] = []
         out_tracker_ids: list[int] = []
@@ -547,6 +669,10 @@ class McBytePlusPlusTracker(BaseTracker):
         self._prune_lost_tracks(timing)
         early_pruned_tracklet_ids = tracklet_ids_before_early_prune - self._alive_tracklet_ids()
         self._merge_pending_removals(sorted(early_pruned_tracklet_ids))
+        if self.reid_joiner is not None:
+            # Retain these events even if inference raises before the final
+            # identity update; otherwise a dead public ID could remain reserved.
+            self._pending_reid_removals.update(early_pruned_tracklet_ids)
 
         mask_frame = None
         if self.mask_manager is not None and current_frame is not None and not timing.skip_predict:
@@ -593,11 +719,22 @@ class McBytePlusPlusTracker(BaseTracker):
             else:
                 unconfirmed_tracks.append(track)
 
-        # CMC: apply to all predicted tracks before association
+        # CMC: apply to all predicted tracks before association. The re-ID flag
+        # belongs to this image only; never reuse it for duplicates/missing images.
+        pause_reconnection = False
         if self.enable_cmc and self.cmc is not None and current_frame is not None and not timing.skip_predict:
             mask_boxes = high_boxes if len(high_boxes) > 0 else None
             H = self.cmc.estimate(current_frame, mask_boxes)
             self.cmc.apply_batch(H, self.tracks)
+            if (
+                self.enable_reid_camera_motion_pause
+                and self.reid_joiner is not None
+                and isinstance(self.cmc, ConditionalCMC)
+                and self.cmc.last_estimate_available
+            ):
+                pause_reconnection = (
+                    self.cmc.motion_score(H, current_frame.shape[:2]) > self.reid_camera_motion_threshold
+                )
 
         # Cache each tracklet's predicted state bbox once per update. Track state
         # is unchanged across the three association stages: a track matched in an
@@ -631,9 +768,11 @@ class McBytePlusPlusTracker(BaseTracker):
         for row, col in matched:
             track = strack_pool[row]
             track.update(high_boxes[col])
+            if occlusion_pause:
+                reid_matched_boxes[id(track)] = high_boxes[col]
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                 track.tracker_id = self._allocate_tracker_id()
-                track.public_id = track.tracker_id
+                track.public_id = track.tracker_id if self.reid_joiner is None else -1
             out_det_indices.append(int(high_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -660,9 +799,11 @@ class McBytePlusPlusTracker(BaseTracker):
         for row, col in matched:
             track = remaining_tracked[row]
             track.update(low_boxes[col])
+            if occlusion_pause:
+                reid_matched_boxes[id(track)] = low_boxes[col]
             if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                 track.tracker_id = self._allocate_tracker_id()
-                track.public_id = track.tracker_id
+                track.public_id = track.tracker_id if self.reid_joiner is None else -1
             out_det_indices.append(int(low_indices[col]))
             out_tracker_ids.append(track.tracker_id)
 
@@ -703,9 +844,11 @@ class McBytePlusPlusTracker(BaseTracker):
                 track = unconfirmed_tracks[row]
                 orig_high_idx = unmatched_high_list[col]
                 track.update(high_boxes[orig_high_idx])
+                if occlusion_pause:
+                    reid_matched_boxes[id(track)] = high_boxes[orig_high_idx]
                 if track.number_of_successful_updates >= self.minimum_consecutive_frames and track.tracker_id == -1:
                     track.tracker_id = self._allocate_tracker_id()
-                    track.public_id = track.tracker_id
+                    track.public_id = track.tracker_id if self.reid_joiner is None else -1
                 out_det_indices.append(int(high_indices[orig_high_idx]))
                 out_tracker_ids.append(track.tracker_id)
 
@@ -743,6 +886,8 @@ class McBytePlusPlusTracker(BaseTracker):
         terminated_tracklet_ids = sorted(
             early_pruned_tracklet_ids | (tracklet_ids_before_pruning - tracklet_ids_after_pruning)
         )
+        if self.reid_joiner is not None:
+            self._pending_reid_removals.update(terminated_tracklet_ids)
 
         # Mask snapshots consume internal IDs before public re-ID mapping.
         result = cast(sv.Detections, detections[np.array(out_det_indices, dtype=int)])
@@ -753,6 +898,49 @@ class McBytePlusPlusTracker(BaseTracker):
             self._merge_pending_removals(terminated_tracklet_ids)
         else:
             self._store_previous_mask_inputs(mask_frame, result, terminated_tracklet_ids)
+        if self.reid_joiner is not None:
+            # Tentative objects have no internal ID yet. Keep a compact pause
+            # seed through confirmation (including this step), without moving
+            # their birth reference or keeping a global history of pause flags.
+            if pause_reconnection or occlusion_pause:
+                registered = self.reid_joiner.public_ids
+                for track in self.tracks:
+                    if (
+                        track.public_id >= 0
+                        or track.tracker_id in registered
+                        or track.start_reid_step >= self._reid_step
+                    ):
+                        continue
+                    box = reid_matched_boxes.get(id(track))
+                    if pause_reconnection or (
+                        box is not None
+                        and foreground_overlap(box, detections.xyxy)
+                        >= self.reid_joiner.config.feature_occlusion_overlap_threshold
+                    ):
+                        track.reid_paused_steps += 1
+            result = self.reid_joiner.update(
+                result,
+                current_frame,
+                tracklet_starts={
+                    track.tracker_id: (track.start_frame, track.start_reid_step)
+                    for track in self.tracks
+                    if track.tracker_id >= 0
+                },
+                removed_tracklet_ids=self._pending_reid_removals,
+                reference_boxes=detections.xyxy,
+                frame_number=self.frame_id,
+                step=self._reid_step,
+                extract_features=not timing.skip_predict and not pause_reconnection,
+                pause_reconnection=pause_reconnection,
+                tracklet_paused_steps=(
+                    {track.tracker_id: track.reid_paused_steps for track in self.tracks if track.tracker_id >= 0}
+                    if self.enable_reid_camera_motion_pause or self.reid_joiner.config.pause_reconnection_on_occlusion
+                    else None
+                ),
+            )
+            self._pending_reid_removals.clear()
+            self._sync_public_ids()
+            return result
         public_ids = {track.tracker_id: track.public_id for track in self.tracks if track.tracker_id >= 0}
         result.tracker_id = np.array([public_ids.get(key, -1) for key in out_tracker_ids], dtype=int)
         return result
@@ -1224,14 +1412,13 @@ class McBytePlusPlusTracker(BaseTracker):
         similarity_matrix: np.ndarray,
         min_similarity_thresh: float,
     ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
-        """Associate detections to tracks based on Similarity (IoU) using the Jonker-Volgenant algorithm approach with
-        no initialization instead of the Hungarian algorithm as mentioned in the SORT paper, but it solves the
-        assignment problem in an optimal way.
+        """Solve maximum-similarity assignment, then retain pairs meeting the threshold.
 
         Args:
             similarity_matrix: Similarity matrix between tracks (rows) and detections
-            (columns). min_similarity_thresh: Minimum similarity threshold for a valid
-            match.
+                (columns).
+            min_similarity_thresh: Minimum similarity threshold for a valid match,
+                inclusive.
 
         Returns:
             matched: List of ``(tracker_idx, detection_idx)`` tuples for
@@ -1269,10 +1456,8 @@ class McBytePlusPlusTracker(BaseTracker):
     ) -> None:
         """Create new tracklets from unmatched high-confidence detections.
 
-        On the very first frame, new tracklets are immediately activated with a
-        real tracker ID, following the original ByteTrack convention where
-        ``activate()`` sets ``is_activated = True`` only when
-        ``frame_id == 1``.
+        When ``is_first_frame`` and ``instant_first_frame_activation`` are both True, assign new tracklets internal IDs
+        immediately. Public identity resolution remains separate when re-ID joining is enabled.
         """
         for det_local_idx in unmatched_high_local:
             global_idx = int(high_indices[det_local_idx])
@@ -1284,26 +1469,81 @@ class McBytePlusPlusTracker(BaseTracker):
             # have tracker_id of -1"), the symmetric handling of unmatched
             # low-confidence detections, and sibling ByteTrack. Only detections
             # clearing the activation threshold spawn a new tracklet; a
-            # first-frame instant-activated spawn is emitted with its real ID.
+            # first-frame instant-activated spawn is emitted with its internal ID.
             tracker_id_out = -1
             if conf >= self.track_activation_threshold:
                 tracklet = McBytePlusPlusTracklet(
                     initial_bbox=detection_boxes[global_idx],
                     state_estimator_class=self.state_estimator_class,
                 )
+                tracklet.start_frame = self.frame_id
+                tracklet.start_reid_step = self._reid_step
                 if is_first_frame and self.instant_first_frame_activation:
                     tracklet.tracker_id = self._allocate_tracker_id()
-                    tracklet.public_id = tracklet.tracker_id
+                    tracklet.public_id = tracklet.tracker_id if self.reid_joiner is None else -1
                 self.tracks.append(tracklet)
                 tracker_id_out = tracklet.tracker_id
 
             out_det_indices.append(global_idx)
             out_tracker_ids.append(tracker_id_out)
 
+    def _sync_public_ids(self) -> None:
+        """Copy current identity decisions without changing internal mask owners."""
+        if self.reid_joiner is not None:
+            mapping = self.reid_joiner.public_ids
+            for track in self.tracks:
+                track.public_id = mapping.get(track.tracker_id, -1)
+
+    def pop_finalized_results(self) -> dict[int, sv.Detections]:
+        """Drain previously pending observations, grouped by processing frame.
+
+        Keys count accepted ``update`` calls from one, including duplicate
+        timestamps and missing-image calls. Invalid/backward timestamp calls
+        that are skipped do not increment this reference. Built-in commands
+        translate references to source frame numbers automatically.
+
+        Returned rows have finalized public IDs. They supplement current
+        observations returned by ``update`` with nonnegative public IDs,
+        including ID 0. Do not write the earlier live ``-1`` rows to MOT output.
+        Frames can recur in separate pops as different identities
+        resolve, so append rather than replace their records. Buffers retain
+        observations, not images or segmentation masks, until pop/finish/reset.
+
+        Raises:
+            RuntimeError: If re-ID joining or historical buffering is disabled.
+        """
+        if self.reid_joiner is None:
+            raise RuntimeError("Historical results require a reid_model and buffer_results=True.")
+        return self.reid_joiner.pop_finalized_results()
+
+    def finish(self) -> dict[int, sv.Detections]:
+        """Close the sequence and return unread historical rows with final IDs.
+
+        Pending eligible identities receive new unused IDs; this does not fabricate observations for unconfirmed tracks.
+        Return an empty dictionary when re-ID/buffering is disabled or closure has already happened. No files are
+        written automatically. A later ``update`` requires ``reset``. Loaded model weights remain available for the next
+        sequence.
+        """
+        if self._finished:
+            return {}
+        result = self.reid_joiner.finish() if self.reid_joiner is not None else {}
+        self._sync_public_ids()
+        self._finished = True
+        return result
+
     def reset(self) -> None:
-        """Clear sequence state and restore masks disabled by repeated OOM failures."""
+        """Clear sequence state, retaining models and restoring disabled masks.
+
+        Re-ID galleries, identity allocation, clocks, pending/ready historical output and the finished flag are cleared.
+        Loaded encoder and EdgeTAM weights are retained; EdgeTAM's video session is reset.
+        """
         self.tracks = []
         self.frame_id = 0
+        self._reid_step = 0
+        self._pending_reid_removals.clear()
+        self._finished = False
+        if self.reid_joiner is not None:
+            self.reid_joiner.reset()
         self._last_timestamp = None
         self._reset_id_allocator()
         if self.mask_manager is None and self._consecutive_mask_failures >= _MAX_CONSECUTIVE_MASK_FAILURES:

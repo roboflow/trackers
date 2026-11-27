@@ -26,7 +26,10 @@
         "enable_mask_refresh": true,
         "enable_mask_trust_filter": true,
         "mask_refresh_coverage_threshold": 0.5,
-        "minimum_mask_creation_frames": 1
+        "minimum_mask_creation_frames": 1,
+        "enable_reid_camera_motion_pause": true,
+        "reid_camera_motion_threshold": 0.02,
+        "reid_joining_config": null
     },
     "output_dir": "outputs/inspect/mcbyteplusplus"
 }
