@@ -273,60 +273,85 @@ def _run_sequence(
             partial_results.parent.mkdir(parents=True, exist_ok=True)
             if options["save_frames"]:
                 frame_dir.mkdir(parents=True)
-            with (
-                partial_results.open("w", encoding="utf-8") as results,
-                _VideoOutput(video_path if options["save_video"] else None, fps=sequence.frame_rate) as video,
-            ):
-                result_writer = _ReIDResultWriter(
-                    tracker,
-                    lambda number, values: append_mot_results(
-                        results_file=results, frame_number=number, tracked_detections=values
-                    ),
-                )
-                interrupted = False
-                try:
-                    for number in range(1, frame_count + 1):
-                        path = find_frame_path(sequence.path / "img1", number)
-                        frame = cv2.imread(str(path))
-                        if frame is None:
-                            raise OSError(f"Could not decode {path}.")
-                        values = build_detections(detections.get(number, []))
-                        for timed_device in devices:
-                            _synchronize(timed_device)
-                        update_started = perf_counter()
-                        tracked = tracker.update(values, frame)
-                        for timed_device in devices:
-                            _synchronize(timed_device)
-                        report["tracking_seconds"] += perf_counter() - update_started
-                        report["processed_frames"] += 1
-                        report["mask_disabled_frames"] += int(tracker.mask_manager is None)
-                        if not np.isfinite(tracked.xyxy).all():
-                            raise RuntimeError(f"Non-finite tracker boxes on frame {number}.")
-                        result_writer.write_current(number, tracked)
-                        if options["save_video"] or options["save_frames"]:
-                            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            visual = cv2.cvtColor(
-                                visualize_mcbyteplusplus(rgb, number, tracked, tracker), cv2.COLOR_RGB2BGR
-                            )
-                            if not video.write(visual):
-                                raise OSError(f"Could not write {video_path}.")
-                            if options["save_frames"] and not cv2.imwrite(str(frame_dir / f"{number:06d}.jpg"), visual):
-                                raise OSError(f"Could not save annotated frame {number}.")
-                        progress.advance(task)
-                except KeyboardInterrupt:
-                    interrupted = True
-                finalization_started = perf_counter()
-                result_writer.finish(completed_only=interrupted)
-                report["finalization_seconds"] = perf_counter() - finalization_started
-                report["reid_finalized_rows"] = result_writer.historical_rows
+            processing_error: Exception | None = None
+            try:
+                with (
+                    partial_results.open("w", encoding="utf-8") as results,
+                    _VideoOutput(video_path if options["save_video"] else None, fps=sequence.frame_rate) as video,
+                ):
+                    result_writer = _ReIDResultWriter(
+                        tracker,
+                        lambda number, values: append_mot_results(
+                            results_file=results, frame_number=number, tracked_detections=values
+                        ),
+                    )
+                    interrupted = False
+                    try:
+                        for number in range(1, frame_count + 1):
+                            path = find_frame_path(sequence.path / "img1", number)
+                            frame = cv2.imread(str(path))
+                            if frame is None:
+                                raise OSError(f"Could not decode {path}.")
+                            values = build_detections(detections.get(number, []))
+                            for timed_device in devices:
+                                _synchronize(timed_device)
+                            update_started = perf_counter()
+                            tracked = tracker.update(values, frame)
+                            for timed_device in devices:
+                                _synchronize(timed_device)
+                            report["tracking_seconds"] += perf_counter() - update_started
+                            report["processed_frames"] += 1
+                            report["mask_disabled_frames"] += int(tracker.mask_manager is None)
+                            if not np.isfinite(tracked.xyxy).all():
+                                raise RuntimeError(f"Non-finite tracker boxes on frame {number}.")
+                            result_writer.write_current(number, tracked)
+                            if options["save_video"] or options["save_frames"]:
+                                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                visual = cv2.cvtColor(
+                                    visualize_mcbyteplusplus(rgb, number, tracked, tracker), cv2.COLOR_RGB2BGR
+                                )
+                                if not video.write(visual):
+                                    raise OSError(f"Could not write {video_path}.")
+                                if options["save_frames"] and not cv2.imwrite(
+                                    str(frame_dir / f"{number:06d}.jpg"), visual
+                                ):
+                                    raise OSError(f"Could not save annotated frame {number}.")
+                            progress.advance(task)
+                    except KeyboardInterrupt:
+                        interrupted = True
+                    except Exception as error:
+                        processing_error = error
+                    finalization_started = perf_counter()
+                    result_writer.finish(
+                        completed_only=interrupted or processing_error is not None, processing_error=processing_error
+                    )
+                    report["finalization_seconds"] = perf_counter() - finalization_started
+                    report["reid_finalized_rows"] = result_writer.historical_rows
+                    if processing_error is not None:
+                        raise processing_error
+            except Exception as cleanup_error:
+                # Close files before sorting recovered rows, retaining the original
+                # processing failure even if output cleanup raises another one.
+                if processing_error is None:
+                    raise
+                if cleanup_error is not processing_error:
+                    print(f"Warning: Output cleanup also failed: {cleanup_error}", file=sys.stderr)
             if result_writer.historical_rows:
-                _sort_mot_results(partial_results)
+                _sort_mot_results(partial_results, processing_error=processing_error)
+            if processing_error is not None:
+                raise processing_error
             if interrupted:
                 raise KeyboardInterrupt
         finally:
             hub_logger.removeFilter(hub_filter)
             if tracker is not None:
-                tracker.reset()
+                processing_failure = sys.exc_info()[1]
+                try:
+                    tracker.reset()
+                except Exception as error:
+                    if processing_failure is None:
+                        raise
+                    print(f"Warning: Tracker cleanup also failed: {error}", file=sys.stderr)
             report["end_to_end_seconds"] = perf_counter() - started
             seconds = report["tracking_seconds"]
             report["tracking_fps"] = report["processed_frames"] / seconds if seconds > 0 else None

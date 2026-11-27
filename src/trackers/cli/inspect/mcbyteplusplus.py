@@ -180,55 +180,72 @@ def mcbyteplusplus_inspection(
             manifest.update(resolved_revision=backend.model_revision, device=str(backend.device))
             config["edgetam"].update(revision=backend.model_revision or edgetam.revision, device=str(backend.device))
             (run_dir / "config.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-            with (
-                (run_dir / "results.txt").open("w", encoding="utf-8") as results_file,
-                Progress(
-                    TextColumn("{task.description}"),
-                    BarColumn(),
-                    TaskProgressColumn(),
-                    MofNCompleteColumn(),
-                    TimeElapsedColumn(),
-                    TimeRemainingColumn(),
-                    console=Console(stderr=True),
-                ) as progress,
-            ):
-                result_writer = _ReIDResultWriter(
-                    tracker_obj,
-                    lambda number, values: append_mot_results(
-                        results_file=results_file, frame_number=number, tracked_detections=values
-                    ),
-                )
-                task = progress.add_task("McByte++", total=len(frame_paths))
-                interrupted = False
-                try:
-                    for number, frame_path in zip(range(sequence.start_frame, sequence.end_frame + 1), frame_paths):
-                        rgb = load_rgb_frame(frame_path)
-                        tracked = tracker_obj.update(
-                            build_detections(detections.get(number, [])), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-                        )
-                        result_writer.write_current(number, tracked)
-                        save_rgb_image(
-                            visualize_mcbyteplusplus(rgb, number, tracked, tracker_obj),
-                            run_dir / "frames" / frame_path.name,
-                        )
-                        manifest["frames"].append(
-                            {
-                                "frame": number,
-                                "file": frame_path.name,
-                                "sha256": hashlib.sha256(frame_path.read_bytes()).hexdigest(),
-                                "session_index": backend.session_index,
-                                "session_frame_count": backend.session_frame_count,
-                                "output_ids": [] if tracked.tracker_id is None else tracked.tracker_id.tolist(),
-                                "excluded_mask_ids": sorted(tracker_obj.untrusted_mask_ids),
-                            }
-                        )
-                        progress.advance(task)
-                except KeyboardInterrupt:
-                    interrupted = True
-                result_writer.finish(completed_only=interrupted)
-                manifest["reid_finalized_rows"] = result_writer.historical_rows
+            processing_error: Exception | None = None
+            try:
+                with (
+                    (run_dir / "results.txt").open("w", encoding="utf-8") as results_file,
+                    Progress(
+                        TextColumn("{task.description}"),
+                        BarColumn(),
+                        TaskProgressColumn(),
+                        MofNCompleteColumn(),
+                        TimeElapsedColumn(),
+                        TimeRemainingColumn(),
+                        console=Console(stderr=True),
+                    ) as progress,
+                ):
+                    result_writer = _ReIDResultWriter(
+                        tracker_obj,
+                        lambda number, values: append_mot_results(
+                            results_file=results_file, frame_number=number, tracked_detections=values
+                        ),
+                    )
+                    task = progress.add_task("McByte++", total=len(frame_paths))
+                    interrupted = False
+                    try:
+                        for number, frame_path in zip(range(sequence.start_frame, sequence.end_frame + 1), frame_paths):
+                            rgb = load_rgb_frame(frame_path)
+                            tracked = tracker_obj.update(
+                                build_detections(detections.get(number, [])), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                            )
+                            result_writer.write_current(number, tracked)
+                            save_rgb_image(
+                                visualize_mcbyteplusplus(rgb, number, tracked, tracker_obj),
+                                run_dir / "frames" / frame_path.name,
+                            )
+                            manifest["frames"].append(
+                                {
+                                    "frame": number,
+                                    "file": frame_path.name,
+                                    "sha256": hashlib.sha256(frame_path.read_bytes()).hexdigest(),
+                                    "session_index": backend.session_index,
+                                    "session_frame_count": backend.session_frame_count,
+                                    "output_ids": [] if tracked.tracker_id is None else tracked.tracker_id.tolist(),
+                                    "excluded_mask_ids": sorted(tracker_obj.untrusted_mask_ids),
+                                }
+                            )
+                            progress.advance(task)
+                    except KeyboardInterrupt:
+                        interrupted = True
+                    except Exception as error:
+                        processing_error = error
+                    result_writer.finish(
+                        completed_only=interrupted or processing_error is not None, processing_error=processing_error
+                    )
+                    manifest["reid_finalized_rows"] = result_writer.historical_rows
+                    if processing_error is not None:
+                        raise processing_error
+            except Exception as cleanup_error:
+                # Close files before sorting recovered rows, retaining the original
+                # processing failure even if output cleanup raises another one.
+                if processing_error is None:
+                    raise
+                if cleanup_error is not processing_error:
+                    print(f"Warning: Output cleanup also failed: {cleanup_error}", file=sys.stderr)
             if result_writer.historical_rows:
-                _sort_mot_results(run_dir / "results.txt")
+                _sort_mot_results(run_dir / "results.txt", processing_error=processing_error)
+            if processing_error is not None:
+                raise processing_error
             if interrupted:
                 raise KeyboardInterrupt
             manifest["status"] = "completed"
@@ -242,7 +259,12 @@ def mcbyteplusplus_inspection(
         finally:
             hub_logger.removeFilter(hub_notice_filter)
             if tracker_obj is not None:
-                tracker_obj.reset()
+                try:
+                    tracker_obj.reset()
+                except Exception as error:
+                    if manifest["status"] == "completed":
+                        raise
+                    print(f"Warning: Tracker cleanup also failed: {error}", file=sys.stderr)
             manifest["warnings"] = [
                 {
                     "category": warning.category.__name__,

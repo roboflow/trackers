@@ -79,7 +79,8 @@ class LongTermReIDConfig:
             processing steps do not request this additional pause.
         feature_occlusion_overlap_threshold: Maximum individual intersection
             divided by target area over boxes with a greater bottom y coordinate.
-            Extraction is deferred at or above this value. Defaults to 0.6.
+            Extraction is deferred at or above this value. Must be in (0, 1];
+            zero would reject even unoccluded boxes. Defaults to 0.6.
             This box-only heuristic has no dependency on mask creation settings.
 
     Raises:
@@ -103,10 +104,13 @@ class LongTermReIDConfig:
     pause_reconnection_on_occlusion: bool = True
 
     def __post_init__(self) -> None:
-        for name in ("minimum_detection_confidence", "feature_occlusion_overlap_threshold"):
-            value = getattr(self, name)
-            if not math.isfinite(value) or not 0 <= value <= 1:
-                raise ValueError(f"{name} must be finite and in [0, 1].")
+        if not math.isfinite(self.minimum_detection_confidence) or not 0 <= self.minimum_detection_confidence <= 1:
+            raise ValueError("minimum_detection_confidence must be finite and in [0, 1].")
+        if (
+            not math.isfinite(self.feature_occlusion_overlap_threshold)
+            or not 0 < self.feature_occlusion_overlap_threshold <= 1
+        ):
+            raise ValueError("feature_occlusion_overlap_threshold must be finite and in (0, 1].")
         if not math.isfinite(self.minimum_cosine_similarity) or not -1 <= self.minimum_cosine_similarity <= 1:
             raise ValueError("minimum_cosine_similarity must be finite and in [-1, 1].")
         for name in ("minimum_box_width", "minimum_box_height", "minimum_box_area", "border_margin"):

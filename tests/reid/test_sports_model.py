@@ -24,6 +24,7 @@ import requests
 from numpy._core.multiarray import scalar as numpy_scalar
 
 from trackers.reid import sports_model
+from trackers.reid.long_term_encoder import _load_long_term_encoder
 from trackers.reid.sports_model import prepare_sports_reid_model
 
 
@@ -88,7 +89,8 @@ def conversion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespa
             root = Path(directory)
             root.mkdir()
             with (root / "weights.safetensors").open("wb") as handle:
-                np.savez(handle, allow_pickle=False, **self._backbone.state)
+                # All arrays are numeric; older NumPy treats allow_pickle as an array key.
+                np.savez(handle, **self._backbone.state)  # type: ignore[arg-type]
             (root / "reid_config.json").write_text(
                 json.dumps({"architecture": self.architecture, "preprocessing": self.preprocessing.values})
             )
@@ -245,6 +247,21 @@ def test_prepare_sports_requires_optional_extra_for_conversion(
     with pytest.raises(ImportError, match=r"trackers\[reid\]"):
         prepare_sports_reid_model(conversion.checkpoint, cache_dir=tmp_path / "cache")
     assert list((tmp_path / "cache").iterdir()) == []
+
+
+@pytest.mark.parametrize("error_type", [ImportError, OSError, RuntimeError])
+def test_sports_alias_reports_preparation_failures_as_contextual_loader_errors(
+    monkeypatch: pytest.MonkeyPatch, error_type: type[Exception]
+) -> None:
+    failure = error_type("original preparation failure")
+
+    def fail_preparation() -> Path:
+        raise failure
+
+    monkeypatch.setattr(sports_model, "prepare_sports_reid_model", fail_preparation)
+    with pytest.raises(ValueError, match=r"mcbyteplusplus_sports.*original preparation failure") as caught:
+        _load_long_term_encoder("mcbyteplusplus_sports", device="cpu")
+    assert caught.value.__cause__ is failure
 
 
 def test_prepare_sports_never_retries_unsafe_pickle_loading(

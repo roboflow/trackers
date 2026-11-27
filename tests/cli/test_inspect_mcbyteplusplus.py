@@ -31,7 +31,7 @@ from trackers.core.masks.base import MaskOutput
 @pytest.mark.parametrize(
     ("fail_on_second", "emit_warnings"),
     [(False, True), (True, True), (False, False)],
-    ids=["completed", "interrupted", "no_captured_warnings"],
+    ids=["completed", "failed", "no_captured_warnings"],
 )
 def test_inspection_streams_bgr_and_saves_reusable_provenance(
     tmp_path: Path,
@@ -145,7 +145,7 @@ def test_inspection_streams_bgr_and_saves_reusable_provenance(
     assert calls[0]["cmc_maximum_scale"] == 2.0
     assert calls[0]["enable_mask_trust_filter"] is True
     assert FakeTracker.reset_called
-    assert FakeTracker.finish_called is not fail_on_second
+    assert FakeTracker.finish_called
     parser = _CLIParser(exit_on_error=False)
     parser.add_argument("--config", action=ActionConfigFile)
     parser.add_function_arguments(mcbyteplusplus_inspection)

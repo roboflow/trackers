@@ -738,3 +738,55 @@ def test_invalid_clocks_do_not_consume_a_processing_reference(clock: str) -> Non
     assert joiner.frame_number == 1
     joiner.update(_observations([20]))
     assert joiner.frame_number == 2
+
+
+@pytest.mark.parametrize("invalid", ["image_dtype", "image_shape", "reference_boxes", "birth", "pause_seed"])
+def test_invalid_update_arguments_leave_identity_state_available_for_retry(invalid: str) -> None:
+    encoder = _Encoder()
+    joiner = LongTermReID(encoder)
+    joiner.update(_observations([100]), _frame())
+    joiner.update(_observations([200]), _frame())
+    options: dict[str, Any] = {
+        "frame": _frame(),
+        "frame_number": 3,
+        "step": 3,
+        "removed_tracklet_ids": [100],
+        "pause_reconnection": True,
+    }
+    if invalid == "image_dtype":
+        options["frame"] = _frame().astype(np.float32)
+    elif invalid == "image_shape":
+        options["frame"] = _frame()[:, :, 0]
+    elif invalid == "reference_boxes":
+        options["reference_boxes"] = np.zeros((2, 3))
+    elif invalid == "birth":
+        options["tracklet_starts"] = {400: (4, 4)}
+    else:
+        options["tracklet_paused_steps"] = {400: 1}  # Raw age is still zero.
+
+    # A late invalid registration must not retire the old owner, age the
+    # pending track or register the earlier valid row from the same batch.
+    with pytest.raises(ValueError):
+        joiner.update(_observations([200, 300, 400]), **options)
+    assert (joiner.frame_number, joiner._step) == (2, 2)
+    assert joiner.public_ids == {100: 0, 200: -1}
+    assert joiner._owners == {0: 100}
+    assert joiner._retired == set()
+    assert joiner._gallery == {}
+    assert joiner._tracks[200].paused_steps == 0
+    assert joiner._tracks[200].last_frame == 2
+    assert len(encoder.calls) == 2
+    assert joiner.pop_finalized_results() == {}
+
+    current = joiner.update(
+        _observations([200, 300, 400]),
+        _frame(),
+        frame_number=3,
+        step=3,
+        removed_tracklet_ids=[100],
+        pause_reconnection=True,
+    )
+    assert current.tracker_id.tolist() == [0, -1, -1]
+    history = joiner.pop_finalized_results()
+    assert list(history) == [2]
+    assert history[2].tracker_id.tolist() == [0]

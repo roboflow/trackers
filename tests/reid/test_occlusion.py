@@ -298,7 +298,11 @@ def test_occlusion_without_any_features_still_finalizes_on_termination_and_finis
     assert encoder.calls == []
 
 
-def test_occlusion_pause_requires_filter_and_boolean_configuration() -> None:
+def test_occlusion_configuration_requires_positive_threshold_and_compatible_filter() -> None:
+    with pytest.raises(ValueError, match="feature_occlusion_overlap_threshold"):
+        LongTermReIDConfig(feature_occlusion_overlap_threshold=0)
+    # Zero confidence and full-overlap occlusion thresholds remain supported.
+    LongTermReIDConfig(minimum_detection_confidence=0, feature_occlusion_overlap_threshold=1)
     with pytest.raises(ValueError, match="requires enable_feature_occlusion_filter"):
         LongTermReIDConfig(enable_feature_occlusion_filter=False)
     with pytest.raises(ValueError, match="pause_reconnection_on_occlusion must be a boolean"):

@@ -101,7 +101,9 @@ def test_writer_maps_repeated_historical_frames_without_retaining_completed_refe
 
 
 @pytest.mark.parametrize("buffer_results", [True, False])
-@pytest.mark.parametrize("interrupt", [None, "between_frames", "inside_update"])
+@pytest.mark.parametrize(
+    "interrupt", [None, "between_frames", "inside_update", "source_error", "update_error", "cleanup_error"]
+)
 def test_generic_track_maps_sparse_source_frames_and_finishes_before_writer_close(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, buffer_results: bool, interrupt: str | None
 ) -> None:
@@ -118,6 +120,8 @@ def test_generic_track_maps_sparse_source_frames_and_finishes_before_writer_clos
             yield number, frame
         if interrupt == "between_frames":
             raise KeyboardInterrupt
+        if interrupt == "source_error":
+            raise OSError("source failed")
 
     monkeypatch.setattr(track_module, "frames_from_source", frames)
     update = tracker.update
@@ -126,16 +130,27 @@ def test_generic_track_maps_sparse_source_frames_and_finishes_before_writer_clos
         tracked = update(detections, frame)
         if tracker.frame_id == 4:
             # This update buffered a row but never returned its source-frame mapping.
+            if interrupt in ("update_error", "cleanup_error"):
+                raise RuntimeError("update failed")
             raise KeyboardInterrupt
         return tracked
 
-    if interrupt == "inside_update":
+    if interrupt in ("inside_update", "update_error", "cleanup_error"):
         monkeypatch.setattr(tracker, "update", interrupting_update)
+    if interrupt == "cleanup_error":
+        finish = tracker.finish
+
+        def failed_finish() -> dict[int, sv.Detections]:
+            finish()
+            raise OSError("finalization failed")
+
+        monkeypatch.setattr(tracker, "finish", failed_finish)
     detector_outputs = [sv.Detections.empty(), *[_detections([8, 9, 10], class_ids=[1, 1, 2]) for _ in range(3)]]
     monkeypatch.setattr(track_module, "_run_model", lambda *args: detector_outputs.pop(0))
     path = tmp_path / "results.txt"
-    assert (
-        track_module._run_with_source(
+
+    def run() -> int:
+        return track_module._run_with_source(
             source="unused",
             source_info=_SourceInfo(source_type="image_dir", total_frames=4),
             model=object(),
@@ -150,22 +165,29 @@ def test_generic_track_maps_sparse_source_frames_and_finishes_before_writer_clos
             display=False,
             show=ShowOptions(),
         )
-        == 0
-    )
+
+    if interrupt in ("source_error", "update_error", "cleanup_error"):
+        error = OSError if interrupt == "source_error" else RuntimeError
+        with pytest.raises(error, match=r"source failed|update failed"):
+            run()
+    else:
+        assert run() == 0
     rows = [(int(parts[0]), int(parts[1])) for row in path.read_text().splitlines() if (parts := row.split(","))]
     # The first box observation remains tentative; confirmed pending rows at
     # source frames 80 and 150 flush with the requested public ID at EOF.
-    expected = [(80, 0)] if interrupt == "inside_update" else [(80, 0), (150, 0)]
+    expected = [(80, 0)] if interrupt in ("inside_update", "update_error") else [(80, 0), (150, 0)]
+    if interrupt == "cleanup_error":
+        expected = []  # Cleanup failed, but the original update error still propagates.
     assert rows == (expected if buffer_results else [])
     with pytest.raises(RuntimeError, match=r"finish|finished"):
         tracker.update(sv.Detections.empty())
 
 
-def test_generic_frameless_mcbyteplusplus_finishes_with_reid_disabled(tmp_path: Path) -> None:
+def test_generic_frameless_without_reid_preserves_unassigned_rows_and_finishes(tmp_path: Path) -> None:
     from trackers.io.mot import load_mot_file
 
     path = tmp_path / "detections.txt"
-    path.write_text("1,-1,10,10,30,60,1,1,-1,-1\n")
+    path.write_text("1,-1,10,10,30,60,1,1,-1,-1\n2,-1,120,10,30,60,1,1,-1,-1\n")
     tracker = McBytePlusPlusTracker(enable_cmc=False)
     assert (
         track_module._run_frameless(
@@ -177,8 +199,51 @@ def test_generic_frameless_mcbyteplusplus_finishes_with_reid_disabled(tmp_path: 
         )
         == 0
     )
+    rows = [row.split(",") for row in (tmp_path / "results.txt").read_text().splitlines()]
+    # Generic MOT output keeps the ordinary tentative detection when no
+    # long-term joining is enabled, just as it does for other trackers.
+    assert [(int(row[0]), int(row[1])) for row in rows] == [(1, 0), (2, -1)]
     with pytest.raises(RuntimeError, match=r"finish|finished"):
         tracker.update(sv.Detections.empty())
+
+
+@pytest.mark.parametrize("close_fails", [False, True])
+def test_generic_failure_status_and_original_error_survive_output_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], close_fails: bool
+) -> None:
+    from trackers.io.mot import load_mot_file
+
+    source = tmp_path / "detections.txt"
+    source.write_text("1,-1,10,10,30,60,1,1,-1,-1\n")
+    tracker = McBytePlusPlusTracker(enable_cmc=False)
+    failure = RuntimeError("original processing failure")
+
+    def fail_update(*args: Any, **kwargs: Any) -> sv.Detections:
+        raise failure
+
+    monkeypatch.setattr(tracker, "update", fail_update)
+    close = track_module._MOTOutput.__exit__
+
+    def failed_close(self: Any, *args: Any) -> None:
+        close(self, *args)
+        raise OSError("output close failure")
+
+    if close_fails:
+        monkeypatch.setattr(track_module._MOTOutput, "__exit__", failed_close)
+    with pytest.raises(RuntimeError, match="original processing failure") as caught:
+        track_module._run_frameless(
+            detections_data=load_mot_file(source),
+            class_filter=None,
+            track_id_filter=None,
+            tracker=tracker,
+            mot_results=tmp_path / "results.txt",
+        )
+    assert caught.value is failure
+    captured = capsys.readouterr()
+    output = captured.out + captured.err
+    assert "(source lost)" in output
+    assert "✓ Tracking" not in output
+    assert ("output close failure" in output) == close_fails
 
 
 @pytest.mark.parametrize("command", ["inspect", "benchmark", "track"])
@@ -411,8 +476,13 @@ def test_provenance_hashes_local_artifacts_and_records_sports_source(tmp_path: P
 
 @pytest.mark.parametrize("command", ["inspect", "benchmark"])
 @pytest.mark.parametrize("buffer_interrupted_update", [False, True], ids=["before_update", "inside_update"])
-def test_dedicated_interrupt_flushes_completed_pending_rows_and_preserves_partial_status(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, buffer_interrupted_update: bool
+@pytest.mark.parametrize("error_type", [KeyboardInterrupt, RuntimeError])
+def test_dedicated_failure_flushes_completed_pending_rows_and_preserves_partial_status(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    buffer_interrupted_update: bool,
+    error_type: type[BaseException],
 ) -> None:
     sequence = tmp_path / "data" / "SNMOT-001"
     images = sequence / "img1"
@@ -432,14 +502,21 @@ def test_dedicated_interrupt_flushes_completed_pending_rows_and_preserves_partia
 
         def update(self, detections: sv.Detections, frame: np.ndarray) -> sv.Detections:
             if self.frame_id == 3 and not buffer_interrupted_update:
-                raise KeyboardInterrupt
+                raise error_type("processing failed")
             self.frame_id += 1
             self.mask_manager.mask_propagator.session_frame_count += 1
             detections.tracker_id = (detections.xyxy[:, 0] > 100).astype(int)
             tracked = self.reid_joiner.update(detections, frame)
             if self.frame_id == 4:
-                raise KeyboardInterrupt
+                raise error_type("processing failed")
             return tracked
+
+        def reset(self) -> None:
+            super().reset()
+            if error_type is RuntimeError:
+                # Even a second failure during reset must leave the report's
+                # original processing error and recovered rows intact.
+                raise OSError("reset also failed")
 
     module = inspect_module if command == "inspect" else benchmark_module
     monkeypatch.setattr(module, "McBytePlusPlusTracker", InterruptingTracker)
@@ -452,18 +529,24 @@ def test_dedicated_interrupt_flushes_completed_pending_rows_and_preserves_partia
         )
     else:
         code = benchmark_module.benchmark_command(sequence.parent, reid=reid, output_root=output, save_frames=False)
-    assert code == 130
+    interrupted = error_type is KeyboardInterrupt
+    assert code == (130 if interrupted else 1)
     assert len(instances) == 1
     assert instances[0].finish_called and instances[0].reset_called
     run = next(output.iterdir())
     report = json.loads((run / "run.json").read_text())
-    assert report["status"] == "interrupted"
+    status = "interrupted" if interrupted else "failed"
+    assert report["status"] == status
     if command == "inspect":
+        if not interrupted:
+            assert report["error"] == "processing failed"
         assert [entry["frame"] for entry in report["frames"]] == [1, 2, 3]
         assert report["reid_finalized_rows"] == 2
         result_path = run / "results.txt"
     else:
-        assert report["sequences"][0]["status"] == "interrupted"
+        assert report["sequences"][0]["status"] == status
+        if not interrupted:
+            assert report["sequences"][0]["error"] == "processing failed"
         assert report["sequences"][0]["processed_frames"] == 3
         assert report["sequences"][0]["reid_finalized_rows"] == 2
         assert report["totals"]["completed_sequences"] == 0

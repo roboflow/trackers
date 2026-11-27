@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -33,9 +34,12 @@ class _ReIDResultWriter:
         self.historical_rows = 0
 
     def write_current(self, source_frame: int, detections: sv.Detections) -> None:
-        """Write current public IDs and drain newly resolved historical rows."""
+        """Drain resolved rows; without re-ID, preserve the caller's ordinary output policy."""
         joiner = self.tracker.reid_joiner
-        if joiner is not None and joiner.config.buffer_results:
+        if joiner is None:
+            self._write(source_frame, detections)
+            return
+        if joiner.config.buffer_results:
             pending = int(np.count_nonzero(detections.data.get("reid_pending", [])))
             if pending:
                 self._pending[self.tracker.frame_id] = (source_frame, pending)
@@ -59,26 +63,41 @@ class _ReIDResultWriter:
             self._write_confirmed(source_frame, detections)
             self.historical_rows += len(detections)
 
-    def finish(self, *, completed_only: bool = False) -> None:
+    def finish(self, *, completed_only: bool = False, processing_error: Exception | None = None) -> None:
         """Close the tracker and write its final pending tail before file close.
 
         With ``completed_only=True``, exclude observations from an update that never returned to the caller and
-        therefore has no registered source frame. Callers use this option when closing interrupted processing.
+        therefore has no registered source frame. Callers use this option after interruption or processing failure. When
+        ``processing_error`` is supplied, report cleanup failures without replacing that original error; the caller
+        remains responsible for re-raising it and retaining failed/partial run status.
         """
-        results = self.tracker.finish()
-        if completed_only:
-            results = {frame: rows for frame, rows in results.items() if frame in self._pending}
-        self._write_finalized(results)
+        try:
+            results = self.tracker.finish()
+            if completed_only:
+                results = {frame: rows for frame, rows in results.items() if frame in self._pending}
+            self._write_finalized(results)
+        except Exception as error:
+            if processing_error is None:
+                raise
+            print(
+                f"Warning: Could not finalize buffered ReID results after processing failed: {error}", file=sys.stderr
+            )
 
 
-def _sort_mot_results(path: Path | None) -> None:
+def _sort_mot_results(path: Path | None, *, processing_error: Exception | None = None) -> None:
     """Sort MOT rows by source frame and public ID after output collection ends.
 
     All serialized text rows are loaded into memory for sorting; no images or Detections are retained. Callers can sort
-    complete results at EOF or partial results after interruption.
+    complete results at EOF or partial results after interruption or failure. When an original processing error is
+    supplied, report sorting failures without replacing it; the caller must still re-raise the original error.
     """
     if path is None:
         return
-    rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
-    rows.sort(key=lambda row: tuple(int(value) for value in row.split(",", 2)[:2]))
-    path.write_text("".join(rows), encoding="utf-8")
+    try:
+        rows = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        rows.sort(key=lambda row: tuple(int(value) for value in row.split(",", 2)[:2]))
+        path.write_text("".join(rows), encoding="utf-8")
+    except (OSError, ValueError) as error:
+        if processing_error is None:
+            raise
+        print(f"Warning: Could not sort partial MOT results after processing failed: {error}", file=sys.stderr)

@@ -186,8 +186,10 @@ class LongTermReID:
 
         Raises:
             RuntimeError: After ``finish``, or on an identity ownership violation.
-            ValueError: For invalid clocks, duplicate internal IDs, inconsistent
-                birth references or invalid encoder output.
+            ValueError: For invalid clocks, images, reference-box shapes, internal
+                IDs, birth references, pause seeds or encoder output. Argument
+                validation precedes state changes; encoder failures may occur
+                after the update clocks and tracklet lifecycle have advanced.
         """
         if self._closed:
             raise RuntimeError("Long-term ReID is finished; call reset() before update().")
@@ -213,14 +215,16 @@ class LongTermReID:
         if removed.intersection(observed) or self._retired.intersection(observed):
             raise ValueError("A terminated internal tracklet ID cannot be observed again; allocate a new internal ID.")
         advanced = next_step > self._step
-        self._frame_number, self._step = next_frame, next_step
-        for internal_id in sorted(removed):
-            self._terminate(internal_id)
-        occluded: set[int] = set()
-        if self.config.pause_reconnection_on_occlusion and frame is not None and advanced and extract_features:
-            boxes = detections.xyxy if reference_boxes is None else np.asarray(reference_boxes)
+        boxes = detections.xyxy
+        if frame is not None and advanced and extract_features:
+            if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
+                raise ValueError("ReID expects a BGR uint8 frame with shape (H, W, 3).")
+            if reference_boxes is not None:
+                boxes = np.asarray(reference_boxes)
             if boxes.ndim != 2 or boxes.shape[1] != 4:
                 raise ValueError("reference_boxes must have shape (N, 4).")
+        occluded: set[int] = set()
+        if self.config.pause_reconnection_on_occlusion and frame is not None and advanced and extract_features:
             # Check every accepted image, not only scheduled feature samples.
             # Only observed targets can request an occlusion-specific pause.
             occluded = {
@@ -230,6 +234,28 @@ class LongTermReID:
                 and (identity not in self._tracks or self._tracks[int(identity)].public_id < 0)
                 and foreground_overlap(box, boxes) >= self.config.feature_occlusion_overlap_threshold
             }
+        starts = tracklet_starts or {}
+        seeds = tracklet_paused_steps or {}
+        registrations: dict[int, tuple[int, int, int]] = {}
+        for internal_id in observed:
+            if internal_id not in self._tracks:
+                birth_frame, birth_step = starts.get(internal_id, (next_frame, next_step))
+                if not 1 <= birth_frame <= next_frame or not 1 <= birth_step <= next_step:
+                    raise ValueError("Tracklet birth references must precede or equal the current frame and step.")
+                # The seed includes the registration step; do not count it twice.
+                paused = seeds.get(
+                    internal_id,
+                    int(advanced and (pause_reconnection or internal_id in occluded) and birth_step < next_step),
+                )
+                if isinstance(paused, bool) or not isinstance(paused, int) or not 0 <= paused <= next_step - birth_step:
+                    raise ValueError("Tracklet paused steps must be a non-negative integer no greater than raw age.")
+                registrations[internal_id] = (birth_frame, birth_step, paused)
+
+        # Validate the entire batch before consuming clocks, terminating owners
+        # or registering any tracklets, so invalid arguments can be retried.
+        self._frame_number, self._step = next_frame, next_step
+        for internal_id in sorted(removed):
+            self._terminate(internal_id)
         cap = self.config.maximum_reconnection_pause_steps
         if advanced and (pause_reconnection or occluded):
             for internal_id, track in self._tracks.items():
@@ -239,21 +265,9 @@ class LongTermReID:
                     and (cap is None or track.paused_steps < cap)
                 ):
                     track.paused_steps += 1
-        starts = tracklet_starts or {}
-        seeds = tracklet_paused_steps or {}
         for internal_id in observed:
-            if internal_id not in self._tracks:
-                birth_frame, birth_step = starts.get(internal_id, (next_frame, next_step))
-                if not 1 <= birth_frame <= next_frame or not 1 <= birth_step <= next_step:
-                    raise ValueError("Tracklet birth references must precede or equal the current frame and step.")
-                # The seed includes the registration step. Existing tracks were
-                # aged above; applying that same pause again here would double it.
-                paused = seeds.get(
-                    internal_id,
-                    int(advanced and (pause_reconnection or internal_id in occluded) and birth_step < next_step),
-                )
-                if isinstance(paused, bool) or not isinstance(paused, int) or not 0 <= paused <= next_step - birth_step:
-                    raise ValueError("Tracklet paused steps must be a non-negative integer no greater than raw age.")
+            if internal_id in registrations:
+                birth_frame, birth_step, paused = registrations[internal_id]
                 self._tracks[internal_id] = _Tracklet(
                     birth_frame,
                     birth_step,
@@ -265,11 +279,6 @@ class LongTermReID:
                     self._finalize(internal_id)
             self._tracks[internal_id].last_frame = next_frame
         if frame is not None and advanced and extract_features:
-            if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
-                raise ValueError("ReID expects a BGR uint8 frame with shape (H, W, 3).")
-            boxes = detections.xyxy if reference_boxes is None else np.asarray(reference_boxes)
-            if boxes.ndim != 2 or boxes.shape[1] != 4:
-                raise ValueError("reference_boxes must have shape (N, 4).")
             self._collect_features(detections, internal_ids, frame, boxes)
         self._match(observed)
         for internal_id in observed:

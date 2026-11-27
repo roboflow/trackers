@@ -518,42 +518,61 @@ def _run_frameless(
     total_frames = max(detections_data.keys())
     source_info = _SourceInfo(source_type="video", total_frames=total_frames)
     result_writer = None
+    processing_error: Exception | None = None
 
-    with suppress(KeyboardInterrupt):
-        with _MOTOutput(mot_results) as mot, _TrackingProgress(source_info) as progress:
-            if isinstance(tracker, McBytePlusPlusTracker):
-                result_writer = _ReIDResultWriter(
-                    tracker,
-                    lambda number, values: mot.write(number, _filter_tracked(values, class_filter, track_id_filter)),
-                )
-            interrupted = False
-            try:
-                for frame_idx in range(1, total_frames + 1):
-                    if frame_idx in detections_data:
-                        dets = _mot_frame_to_detections(detections_data[frame_idx])
-                    else:
-                        dets = sv.Detections.empty()
+    try:
+        with suppress(KeyboardInterrupt):
+            with _MOTOutput(mot_results) as mot, _TrackingProgress(source_info) as progress:
+                if isinstance(tracker, McBytePlusPlusTracker):
+                    result_writer = _ReIDResultWriter(
+                        tracker,
+                        lambda number, values: mot.write(
+                            number, _filter_tracked(values, class_filter, track_id_filter)
+                        ),
+                    )
+                interrupted = False
+                try:
+                    for frame_idx in range(1, total_frames + 1):
+                        if frame_idx in detections_data:
+                            dets = _mot_frame_to_detections(detections_data[frame_idx])
+                        else:
+                            dets = sv.Detections.empty()
 
-                    if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
-                        mask = np.isin(dets.class_id, class_filter)
-                        dets = dets[mask]  # type: ignore[assignment]
+                        if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
+                            mask = np.isin(dets.class_id, class_filter)
+                            dets = dets[mask]  # type: ignore[assignment]
 
-                    tracked = tracker.update(dets)
-                    if result_writer is not None:
-                        result_writer.write_current(frame_idx, tracked)
-                    else:
-                        mot.write(frame_idx, _filter_tracked(tracked, class_filter, track_id_filter))
-                    progress.update()
+                        tracked = tracker.update(dets)
+                        if result_writer is not None:
+                            result_writer.write_current(frame_idx, tracked)
+                        else:
+                            mot.write(frame_idx, _filter_tracked(tracked, class_filter, track_id_filter))
+                        progress.update()
 
-            except KeyboardInterrupt:
-                interrupted = True
+                except KeyboardInterrupt:
+                    interrupted = True
+                except Exception as error:
+                    processing_error = error
 
-            if result_writer is not None:
-                result_writer.finish(completed_only=interrupted)
-            progress.complete(interrupted=interrupted)
+                if result_writer is not None:
+                    result_writer.finish(
+                        completed_only=interrupted or processing_error is not None, processing_error=processing_error
+                    )
+                if processing_error is not None:
+                    raise processing_error
+                progress.complete(interrupted=interrupted)
+    except Exception as cleanup_error:
+        # Close files before sorting recovered rows, retaining the original
+        # processing failure even if output cleanup raises another one.
+        if processing_error is None:
+            raise
+        if cleanup_error is not processing_error:
+            print(f"Warning: Output cleanup also failed: {cleanup_error}", file=sys.stderr)
 
     if result_writer is not None and result_writer.historical_rows:
-        _sort_mot_results(mot_results)
+        _sort_mot_results(mot_results, processing_error=processing_error)
+    if processing_error is not None:
+        raise processing_error
     return 0
 
 
@@ -588,75 +607,96 @@ def _run_with_source(
     )
     display_ctx = _DisplayWindow() if display else nullcontext()
     result_writer = None
+    processing_error: Exception | None = None
 
-    with suppress(KeyboardInterrupt):
-        with (
-            _VideoOutput(output, fps=source_info.fps or _DEFAULT_OUTPUT_FPS) as video,
-            _MOTOutput(mot_results) as mot,
-            display_ctx as display_win,
-            _TrackingProgress(source_info) as progress,
-        ):
-            if isinstance(tracker, McBytePlusPlusTracker):
-                result_writer = _ReIDResultWriter(
-                    tracker,
-                    lambda number, values: mot.write(number, _filter_tracked(values, class_filter, track_id_filter)),
-                )
-            interrupted = False
-            try:
-                for frame_idx, frame in frame_gen:
-                    if model is not None:
-                        dets = _run_model(model, frame, confidence)
-                    elif detections_data is not None and frame_idx in detections_data:
-                        dets = _mot_frame_to_detections(detections_data[frame_idx])
-                    else:
-                        dets = sv.Detections.empty()
+    try:
+        with suppress(KeyboardInterrupt):
+            with (
+                _VideoOutput(output, fps=source_info.fps or _DEFAULT_OUTPUT_FPS) as video,
+                _MOTOutput(mot_results) as mot,
+                display_ctx as display_win,
+                _TrackingProgress(source_info) as progress,
+            ):
+                if isinstance(tracker, McBytePlusPlusTracker):
+                    result_writer = _ReIDResultWriter(
+                        tracker,
+                        lambda number, values: mot.write(
+                            number, _filter_tracked(values, class_filter, track_id_filter)
+                        ),
+                    )
+                interrupted = False
+                try:
+                    for frame_idx, frame in frame_gen:
+                        if model is not None:
+                            dets = _run_model(model, frame, confidence)
+                        elif detections_data is not None and frame_idx in detections_data:
+                            dets = _mot_frame_to_detections(detections_data[frame_idx])
+                        else:
+                            dets = sv.Detections.empty()
 
-                    if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
-                        mask = np.isin(dets.class_id, class_filter)
-                        dets = dets[mask]  # type: ignore[assignment]
+                        if class_filter is not None and len(dets) > 0 and dets.class_id is not None:
+                            mask = np.isin(dets.class_id, class_filter)
+                            dets = dets[mask]  # type: ignore[assignment]
 
-                    tracked = tracker.update(dets, frame)
-                    if result_writer is not None:
-                        result_writer.write_current(frame_idx, tracked)
-                    tracked = _filter_tracked(tracked, class_filter, track_id_filter)
-                    if result_writer is None:
-                        mot.write(frame_idx, tracked)
-                    progress.update()
+                        tracked = tracker.update(dets, frame)
+                        if result_writer is not None:
+                            result_writer.write_current(frame_idx, tracked)
+                        tracked = _filter_tracked(tracked, class_filter, track_id_filter)
+                        if result_writer is None:
+                            mot.write(frame_idx, tracked)
+                        progress.update()
 
-                    if display or output:
-                        annotated = frame.copy()
-                        if trace_annotator is not None:
-                            annotated = trace_annotator.annotate(annotated, tracked)
-                        for ann in annotators:
-                            mask_detections = (
-                                _mcbyteplusplus_mask_detections(tracked, tracker)
-                                if isinstance(ann, sv.MaskAnnotator) and isinstance(tracker, McBytePlusPlusTracker)
-                                else tracked
-                            )
-                            annotated = ann.annotate(annotated, mask_detections)
-                        if label_annotator is not None:
-                            pending = np.asarray(tracked.data.get("reid_pending", np.zeros(len(tracked), dtype=bool)))
-                            labeled = tracked[(tracked.tracker_id != -1) | pending]
-                            labels = _format_labels(labeled, class_names, show)
-                            annotated = label_annotator.annotate(annotated, labeled, labels)
+                        if display or output:
+                            annotated = frame.copy()
+                            if trace_annotator is not None:
+                                annotated = trace_annotator.annotate(annotated, tracked)
+                            for ann in annotators:
+                                mask_detections = (
+                                    _mcbyteplusplus_mask_detections(tracked, tracker)
+                                    if isinstance(ann, sv.MaskAnnotator) and isinstance(tracker, McBytePlusPlusTracker)
+                                    else tracked
+                                )
+                                annotated = ann.annotate(annotated, mask_detections)
+                            if label_annotator is not None:
+                                pending = np.asarray(
+                                    tracked.data.get("reid_pending", np.zeros(len(tracked), dtype=bool))
+                                )
+                                labeled = tracked[(tracked.tracker_id != -1) | pending]
+                                labels = _format_labels(labeled, class_names, show)
+                                annotated = label_annotator.annotate(annotated, labeled, labels)
 
-                        video.write(annotated)
+                            video.write(annotated)
 
-                        if display_win is not None:
-                            display_win.show(annotated)
-                            if display_win.quit_requested:
-                                interrupted = True
-                                break
+                            if display_win is not None:
+                                display_win.show(annotated)
+                                if display_win.quit_requested:
+                                    interrupted = True
+                                    break
 
-            except KeyboardInterrupt:
-                interrupted = True
+                except KeyboardInterrupt:
+                    interrupted = True
+                except Exception as error:
+                    processing_error = error
 
-            if result_writer is not None:
-                result_writer.finish(completed_only=interrupted)
-            progress.complete(interrupted=interrupted)
+                if result_writer is not None:
+                    result_writer.finish(
+                        completed_only=interrupted or processing_error is not None, processing_error=processing_error
+                    )
+                if processing_error is not None:
+                    raise processing_error
+                progress.complete(interrupted=interrupted)
+    except Exception as cleanup_error:
+        # Close files before sorting recovered rows, retaining the original
+        # processing failure even if output cleanup raises another one.
+        if processing_error is None:
+            raise
+        if cleanup_error is not processing_error:
+            print(f"Warning: Output cleanup also failed: {cleanup_error}", file=sys.stderr)
 
     if result_writer is not None and result_writer.historical_rows:
-        _sort_mot_results(mot_results)
+        _sort_mot_results(mot_results, processing_error=processing_error)
+    if processing_error is not None:
+        raise processing_error
     return 0
 
 
