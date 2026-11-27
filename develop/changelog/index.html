@@ -3377,6 +3377,18 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 <h3 id="fixed">🔧 Fixed</h3>
 <ul>
 <li>
+<p><strong>BOM-only results files and BOM seqmaps in evaluation</strong> — a predictions file holding only a UTF-8 byte order mark made <code>evaluate_mot_sequence</code> raise <code>No valid data found</code> instead of scoring the sequence as having no predictions, because the emptiness check and the loader decoded the same bytes differently. A sequence map starting with a byte order mark put the mark into its first entry, so a header row was not recognised and the first sequence was looked up under a name with the mark. Both ignore a leading UTF-8 mark. An empty ground-truth file still raises. Unmarked seqmaps use the runtime's text encoding and fall back to UTF-8 if needed (<a href="https://github.com/roboflow/trackers/pull/678">#678</a>).</p>
+</li>
+<li>
+<p><strong><code>Tuner</code> handles a seqmap kept in <code>gt_dir</code></strong> — a sequence map stored in the ground-truth folder under the name of a selected sequence was parsed as ground truth and aborted the study with <code>Invalid MOT format</code>. Preflight excludes the map and reports missing ground truth if no valid candidate exists. Trials use the sequence selection and ground-truth paths validated at construction, including when the map is edited or atomically saved. A leading UTF-8 byte order mark is ignored (<a href="https://github.com/roboflow/trackers/pull/678">#678</a>).</p>
+</li>
+<li>
+<p><strong><code>XYXYStateEstimator</code> covariance follows corner swaps under CMC</strong> — when an axis-aligned transform reflected the frame or the stored box was inverted, the corner states and velocities were relabelled but the covariance stayed on the original indices, so variances sat on the wrong edge and the Kalman gain was off. The covariance is now propagated with the same corner relabelling. The XYXY update applies when both off-diagonal coefficients have magnitude at most 1e-6, including when a reflection swaps edges of an upright box. Larger cross-axis terms leave the covariance unchanged. Centre-based estimators retain their existing update (<a href="https://github.com/roboflow/trackers/pull/678">#678</a>).</p>
+</li>
+<li>
+<p><strong>Docs match current behaviour</strong> — the tuning guide now says ground-truth class column values below 1 are rejected and no <code>-1</code> belongs there, the McByte rows describe mask-conditioned association as enabled only when the mask manager is on, <code>iou_variant</code> is documented as ignored by C-BIoU, <code>trackers eval</code> is documented as scoring CLEAR by default, and the evaluation guide covers skipped columns and empty results files (<a href="https://github.com/roboflow/trackers/pull/678">#678</a>).</p>
+</li>
+<li>
 <p><strong>CLI help describes commands and their options</strong> — <code>trackers --help</code> shows command summaries. Run <code>trackers &lt;command&gt; --help</code> (for example, <code>trackers track --help</code>) for option descriptions. The new <code>docstring-parser</code> dependency lets jsonargparse read these descriptions from docstrings. Previously, <code>track</code>, <code>eval</code>, <code>tune</code> and <code>download</code> displayed Python function representations, and dataclass options showed only their type and default (<a href="https://github.com/roboflow/trackers/pull/670">#670</a>).</p>
 </li>
 <li>
