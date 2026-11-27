@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import locale
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -158,7 +159,7 @@ class TestTunerFixedParams:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -286,6 +287,19 @@ class TestTunerInit:
         tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
         assert tuner._sequences == ["seq1"]
 
+    @pytest.mark.parametrize("content", ["seq1\nseq2\n", "name\nseq1\nseq2\n"], ids=["bare", "header"])
+    def test_seqmap_with_utf8_bom_keeps_first_sequence_name(self, tmp_path: Path, content: str) -> None:
+        """A byte order mark saved by some editors is not part of the first sequence name or header."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (gt_dir / "seq2.txt").write_text(_MOT_LINE)
+        (det_dir / "seq2.txt").write_text(_MOT_LINE)
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text(content, encoding="utf-8-sig")
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
+
+        assert tuner._sequences == ["seq1", "seq2"]
+
     def test_hidden_detection_files_are_skipped(self, tmp_path: Path) -> None:
         """Skip hidden metadata and hidden sequences even when ground truth exists."""
         gt_dir, det_dir = _setup_dirs(tmp_path)
@@ -345,6 +359,94 @@ class TestTunerGroundTruthLayout:
         assert len(tuner.study.trials) == 1
         assert tuner.study.best_value == pytest.approx(0.5)
 
+    def test_runs_trial_with_seqmap_named_like_a_sequence_in_ground_truth_root(self, tmp_path: Path) -> None:
+        """A sequence map named ``{seq}.txt`` in the ground-truth root is not scored as that sequence's ground truth."""
+        det_dir = tmp_path / "det"
+        det_dir.mkdir()
+        (det_dir / "seq1.txt").write_text(_MOT_LINE + "2,-1,10,20,100,80,0.9,1\n")
+        gt_dir = tmp_path / "gt"
+        gt_file = gt_dir / "seq1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,20,100,80,1,1\n2,1,10,20,100,80,1,1\n")
+        seqmap = gt_dir / "seq1.txt"
+        seqmap.write_text("name\nseq1\n")
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap, n_trials=1, seed=0)
+        tuner.run()
+
+        assert tuner.study is not None
+        assert len(tuner.study.trials) == 1
+        assert tuner.study.best_value == pytest.approx(0.5)
+
+    @pytest.mark.parametrize(
+        "replacement",
+        [
+            pytest.param("seq1\n", id="removed-sequence"),
+            pytest.param("seq1\nseq2\nseq3\n", id="added-sequence"),
+        ],
+    )
+    def test_trials_score_the_initial_seqmap_selection(self, tmp_path: Path, replacement: str) -> None:
+        """Editing the map after construction cannot change the subset scored by the study."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (gt_dir / "seq1.txt").write_text("1,1,10,20,100,80,1,1\n2,1,10,20,100,80,1,1\n")
+        (gt_dir / "seq2.txt").write_text("1,1,500,500,100,80,1,1\n2,1,500,500,100,80,1,1\n")
+        (gt_dir / "seq3.txt").write_bytes((gt_dir / "seq1.txt").read_bytes())
+        detections = _MOT_LINE + "2,-1,10,20,100,80,0.9,1\n"
+        (det_dir / "seq1.txt").write_text(detections)
+        (det_dir / "seq2.txt").write_text(detections)
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_text("seq1\nseq2\n")
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap, n_trials=1, seed=0)
+
+        seqmap.write_text(replacement)
+        tuner.run()
+
+        assert tuner.study is not None
+        assert tuner.study.best_value == pytest.approx(0.0)
+
+    def test_resaving_a_colliding_seqmap_keeps_nested_ground_truth(self, tmp_path: Path) -> None:
+        """An atomic save of identical map bytes leaves the selected ground-truth file intact."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (det_dir / "seq1.txt").write_text(_MOT_LINE + "2,-1,10,20,100,80,0.9,1\n")
+        gt_file = gt_dir / "seq1" / "gt" / "gt.txt"
+        gt_file.parent.mkdir(parents=True)
+        gt_file.write_text("1,1,10,20,100,80,1,1\n2,1,10,20,100,80,1,1\n")
+        seqmap = gt_dir / "seq1.txt"
+        seqmap.write_text("name\nseq1\n")
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap, n_trials=1, seed=0)
+        replacement = gt_dir / "map.tmp"
+        replacement.write_bytes(seqmap.read_bytes())
+
+        replacement.replace(seqmap)
+        tuner.run()
+
+        assert tuner.study is not None
+        assert tuner.study.best_value == pytest.approx(0.5)
+
+    def test_runs_trial_with_locale_encoded_seqmap(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A CP1252 comment does not prevent tuning an otherwise ASCII sequence selection."""
+        monkeypatch.setattr(locale, "getpreferredencoding", lambda do_setlocale=False: "cp1252")
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        (gt_dir / "seq1.txt").write_text("1,1,10,20,100,80,1,1\n2,1,10,20,100,80,1,1\n")
+        (det_dir / "seq1.txt").write_text(_MOT_LINE + "2,-1,10,20,100,80,0.9,1\n")
+        seqmap = tmp_path / "seqmap.txt"
+        seqmap.write_bytes("# café\nseq1\n".encode("cp1252"))
+
+        tuner = Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap, n_trials=1, seed=0)
+        tuner.run()
+
+        assert tuner.study is not None
+        assert tuner.study.best_value == pytest.approx(0.5)
+
+    def test_reports_seqmap_as_missing_ground_truth(self, tmp_path: Path) -> None:
+        """A sequence map that is the only ``{seq}.txt`` candidate is reported missing instead of parsed later."""
+        gt_dir, det_dir = _setup_dirs(tmp_path)
+        seqmap = gt_dir / "seq1.txt"
+        seqmap.write_text("seq1\n")
+
+        with pytest.raises(FileNotFoundError, match=r"Missing ground-truth files for selected sequences: .*seq1\.txt"):
+            Tuner("bytetrack", gt_dir, det_dir, seqmap=seqmap)
+
     def test_accepts_mot_layout_ground_truth(self, tmp_path: Path) -> None:
         det_dir = tmp_path / "det"
         det_dir.mkdir()
@@ -390,7 +492,7 @@ class TestTunerSeed:
         with (
             patch("trackers.tune.tuner._create_optuna_study", return_value=mock_study) as mock_create,
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -406,7 +508,7 @@ class TestTunerSeed:
         for _ in range(2):
             with (
                 patch(
-                    "trackers.tune.tuner.evaluate_mot_sequences",
+                    "trackers.tune.tuner._evaluate_sequences",
                     return_value=_make_benchmark_result(),
                 ),
                 patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -434,7 +536,7 @@ class TestTunerRun:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -453,7 +555,7 @@ class TestTunerRun:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -478,7 +580,7 @@ class TestTunerRun:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -499,7 +601,7 @@ class TestTunerRun:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -527,7 +629,7 @@ class TestTunerRun:
 
         with (
             patch(
-                "trackers.tune.tuner.evaluate_mot_sequences",
+                "trackers.tune.tuner._evaluate_sequences",
                 return_value=_make_benchmark_result(),
             ),
             patch("trackers.tune.tuner._run_tracker_on_detections"),
@@ -586,7 +688,7 @@ class TestTunerReIDSearchSpace:
             return encoder
 
         monkeypatch.setattr(tuner_module, "_load_reid_encoder", load)
-        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+        with patch("trackers.tune.tuner._evaluate_sequences", return_value=_make_benchmark_result(hota=0.6)):
             tuner = Tuner(
                 "botsort",
                 gt_dir,
@@ -647,7 +749,7 @@ class TestTunerReIDSearchSpace:
         frame_dir.mkdir(parents=True)
         cv2.imwrite(str(frame_dir / "000001.jpg"), np.zeros((200, 200, 3), dtype=np.uint8))
         encoder = _CountingEncoder()
-        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+        with patch("trackers.tune.tuner._evaluate_sequences", return_value=_make_benchmark_result(hota=0.6)):
             tuner = Tuner(
                 "botsort",
                 gt_dir,
@@ -672,7 +774,7 @@ class TestTunerReIDSearchSpace:
         frame_dir.mkdir(parents=True)
         cv2.imwrite(str(frame_dir / "000001.jpg"), np.zeros((200, 200, 3), dtype=np.uint8))
         encoder = _CountingEncoder()
-        with patch("trackers.tune.tuner.evaluate_mot_sequences", return_value=_make_benchmark_result(hota=0.6)):
+        with patch("trackers.tune.tuner._evaluate_sequences", return_value=_make_benchmark_result(hota=0.6)):
             tuner = Tuner(
                 "botsort",
                 gt_dir,

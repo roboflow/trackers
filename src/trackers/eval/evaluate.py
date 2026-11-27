@@ -6,11 +6,14 @@
 
 from __future__ import annotations
 
+import locale
 import logging
 import os
 import warnings
+from codecs import BOM_UTF8
 from collections.abc import Iterable
 from contextlib import suppress
+from io import StringIO
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +33,7 @@ from trackers.eval.results import (
     IdentityMetrics,
     SequenceResult,
 )
-from trackers.io.mot import _MOTFrameData, _prepare_mot_sequence, load_mot_file
+from trackers.io.mot import _MOT_READ_ENCODING, _MOTFrameData, _prepare_mot_sequence, load_mot_file
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +57,8 @@ def _load_predictions(path: str | Path) -> dict[int, _MOTFrameData]:
     """
     path = Path(path)
     if path.exists():
-        with open(path) as f:
+        # Decode as `load_mot_file` does, so a file holding only a byte order mark counts as having no rows.
+        with open(path, encoding=_MOT_READ_ENCODING) as f:
             if not any(line.strip() for line in f):
                 return {}
     return load_mot_file(path)
@@ -352,14 +356,32 @@ def evaluate_mot_sequences(
         raise ValueError(f"No sequences found in {gt_dir}")
 
     _warn_if_mot20_sequences_use_mot17_config(sequences, resolved_class_config)
+    return _evaluate_sequences(
+        [(name, _get_ground_truth_path(gt_dir, name, data_format)) for name in sequences],
+        tracker_dir,
+        validated_metrics,
+        threshold,
+        resolved_class_config,
+        seqmap_stat=seqmap_stat,
+    )
 
-    logger.info("Evaluating %d sequences...", len(sequences))
+
+def _evaluate_sequences(
+    ground_truth: list[tuple[str, Path]],
+    tracker_dir: Path,
+    metrics: list[str],
+    threshold: float,
+    class_config: MOTClassConfig,
+    *,
+    seqmap_stat: os.stat_result | None = None,
+) -> BenchmarkResult:
+    """Score explicit sequence and ground-truth pairs and combine their metrics."""
+    logger.info("Evaluating %d sequences...", len(ground_truth))
 
     # Evaluate each sequence
     sequence_results: dict[str, SequenceResult] = {}
 
-    for seq_name in sequences:
-        gt_path = _get_ground_truth_path(gt_dir, seq_name, data_format)
+    for seq_name, gt_path in ground_truth:
         tracker_path = tracker_dir / f"{seq_name}.txt"
 
         if not gt_path.exists() or _is_seqmap_file(gt_path, seqmap_stat):
@@ -371,13 +393,13 @@ def evaluate_mot_sequences(
             gt_path=gt_path,
             tracker_path=tracker_path,
             sequence=seq_name,
-            metrics=validated_metrics,
+            metrics=metrics,
             threshold=threshold,
-            class_config=resolved_class_config,
+            class_config=class_config,
         )
 
     # Compute aggregate metrics
-    aggregate = _aggregate_metrics(sequence_results, validated_metrics)
+    aggregate = _aggregate_metrics(sequence_results, metrics)
 
     return BenchmarkResult(
         sequences=sequence_results,
@@ -530,6 +552,18 @@ def _get_ground_truth_path(gt_dir: Path, seq_name: str, data_format: Literal["fl
     return gt_dir / seq_name / "gt" / "gt.txt"
 
 
+def _read_seqmap_text(seqmap_path: Path) -> str:
+    """Decode a seqmap using its UTF-8 BOM or the runtime's text encoding."""
+    data = seqmap_path.read_bytes()
+    if data.startswith(BOM_UTF8):
+        return data.decode(_MOT_READ_ENCODING)
+    # Unmarked bytes can be valid in both encodings, so preserve the runtime's original interpretation first.
+    try:
+        return data.decode(locale.getpreferredencoding(False))
+    except UnicodeDecodeError:
+        return data.decode("utf-8")
+
+
 def _parse_seqmap(seqmap_path: str | Path) -> list[str]:
     """Parse a sequence map file to get list of sequence names."""
     seqmap_path = Path(seqmap_path)
@@ -537,8 +571,8 @@ def _parse_seqmap(seqmap_path: str | Path) -> list[str]:
         raise FileNotFoundError(f"Sequence map file not found: {seqmap_path}")
 
     sequences = []
-    with open(seqmap_path) as f:
-        for line in f:
+    with StringIO(_read_seqmap_text(seqmap_path), newline=None) as lines:
+        for line in lines:
             line = line.strip()
             # Skip empty lines, comments, and header
             if not line or line.startswith("#") or line.lower() == "name":

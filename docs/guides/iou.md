@@ -10,7 +10,7 @@ IoU variants are pluggable similarity metrics used during detection-to-track ass
 
 - What each IoU variant measures and when to use it
 - How score ranges affect `minimum_iou_threshold` tuning
-- How to configure IoU variants in any tracker
+- How to configure IoU variants in trackers that take an `iou` argument (C-BIoU uses its own buffered IoU and ignores `--tracker.iou_variant`)
 - How IoU variants perform across common tracking benchmarks
 
 ---

@@ -91,13 +91,19 @@ data
 
 Each sequence must have matching names in both directories. Detections use `{sequence}.txt`; all selected ground-truth sequences must use the same layout: either `{sequence}.txt` or the `{sequence}/gt/gt.txt` layout of a downloaded dataset.
 
-Use MOT format lines:
+Detections use MOT format lines, with `id=-1`:
 
 ```text
 <frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<conf>,<x>,<y>,<z>
 ```
 
-For detections, use `id=-1`. For more details on the format and evaluation workflow, see the [evaluation guide](../evaluations/evaluate.md).
+Ground-truth lines carry a class and visibility in place of the 3D position, and column 8 is read as the class:
+
+```text
+<frame>,<id>,<bb_left>,<bb_top>,<bb_width>,<bb_height>,<conf>,<class>,<visibility>
+```
+
+Do not copy the `-1` placeholders from the detection layout into ground truth. Tuning scores with the `mot17` class configuration and has no class override, so it rejects any considered ground-truth row whose class is below `1` (a row with `conf=0` is not considered). Use class `1` for the objects to score. `trackers eval --class_config` can score other classes, but it is available only for evaluation. For more details on the format and evaluation workflow, see the [evaluation guide](../evaluations/evaluate.md).
 
 ---
 
