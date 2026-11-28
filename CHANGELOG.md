@@ -14,7 +14,7 @@ Every bullet links its PR, or its commit SHA when there was no PR.
 
 ## [Unreleased]
 
-- _Fixed:_ **MOT loaders reject non-finite frame, id and class values** — `load_mot_file` (used by `trackers eval` and `trackers tune`) raised `OverflowError` for an infinite frame number, and cast `nan`, `inf` or out-of-range ids and classes to an arbitrary integer with only a `RuntimeWarning`, so the bad rows were scored under a wrong id. It now raises `ValueError` naming the file, the frame and the field. `trackers track`'s detection-file reader reports an infinite or `nan` frame number as an unparsable line instead of crashing with `OverflowError`. Fractional values are still truncated, as TrackEval reads them ([#PRNUMBER](https://github.com/roboflow/trackers/pull/PRNUMBER)).
+- _Fixed:_ **MOT loaders reject non-finite frame, id and class values** — `load_mot_file` (used by `trackers eval` and `trackers tune`) raised `OverflowError` for an infinite frame number, and cast `nan`, `inf` or out-of-range ids and classes to an arbitrary integer with only a `RuntimeWarning`, so the bad rows were scored under a wrong id. It now raises `ValueError` naming the file, the frame and the field. `trackers track`'s detection-file reader reports an infinite or `nan` frame number as an unparsable line instead of crashing with `OverflowError`. Fractional values are still truncated, as TrackEval reads them ([#680](https://github.com/roboflow/trackers/pull/680)).
 
 ## [2.7.1] — 2026-11-26
 
