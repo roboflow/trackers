@@ -319,6 +319,23 @@ class TestReadDetectionFile:
         with pytest.raises(ValueError, match="Non-positive frame number"):
             read_detection_file(detection_file, "xyxy")
 
+    @pytest.mark.parametrize("frame", ["inf", "-inf", "nan"])
+    def test_non_finite_frame_number_raises(self, tmp_path: Path, frame: str) -> None:
+        """A non-finite frame number is reported as an unparsable line instead of crashing."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text(f"{frame},10,20,30,40,0.9\n")
+        with pytest.raises(ValueError, match="Could not parse detection line 1"):
+            read_detection_file(detection_file, "xyxy")
+
+    def test_fractional_frame_number_is_truncated(self, tmp_path: Path) -> None:
+        """A frame number with a fractional part is truncated, as before and as TrackEval reads it."""
+        detection_file = tmp_path / "seq.txt"
+        detection_file.write_text("2.000000,10,20,30,40,0.9\n3.7,10,20,30,40,0.9\n")
+
+        grouped = read_detection_file(detection_file, "xyxy")
+
+        assert sorted(grouped) == [2, 3]
+
     def test_malformed_line_error_names_the_line_number(self, tmp_path: Path) -> None:
         """A parse failure points back at the offending line, not just the file."""
         detection_file = tmp_path / "seq.txt"

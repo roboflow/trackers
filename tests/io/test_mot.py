@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import numpy as np
@@ -409,3 +410,35 @@ class TestLoadMotFile:
         assert sorted(frames) == [1, 2]
         np.testing.assert_array_equal(frames[1].ids, [7])
         np.testing.assert_allclose(frames[1].boxes, [[10.0, 20.0, 30.0, 40.0]])
+
+    @pytest.mark.parametrize(
+        ("row", "field"),
+        [
+            pytest.param("inf,7,10,20,30,40,1,1,1", "frame", id="infinite-frame"),
+            pytest.param("nan,7,10,20,30,40,1,1,1", "frame", id="nan-frame"),
+            pytest.param("1,nan,10,20,30,40,1,1,1", "id", id="nan-id"),
+            pytest.param("1,inf,10,20,30,40,1,1,1", "id", id="infinite-id"),
+            pytest.param("1,1e30,10,20,30,40,1,1,1", "id", id="out-of-range-id"),
+            pytest.param("1,7,10,20,30,40,1,nan,1", "class", id="nan-class"),
+            pytest.param("1,7,10,20,30,40,1,-inf,1", "class", id="infinite-class"),
+        ],
+    )
+    def test_non_finite_frame_id_or_class_raises(self, tmp_path: Path, row: str, field: str) -> None:
+        """A non-finite or out-of-range frame, id or class raises instead of crashing or casting arbitrarily."""
+        mot_file = tmp_path / "gt.txt"
+        mot_file.write_text(f"1,3,10,20,30,40,1,1,1\n{row}\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match=rf"Invalid {field}.* in {re.escape(str(mot_file))}"):
+            load_mot_file(mot_file)
+
+    def test_fractional_values_are_truncated_like_trackeval(self, tmp_path: Path) -> None:
+        """Fractional frames, ids and classes are truncated as TrackEval reads them; the -1 detection id is kept."""
+        mot_file = tmp_path / "det.txt"
+        mot_file.write_text("1.000000,-1,10,20,30,40,0.9,1.0,1\n2.9,5.7,12,20,30,40,1,2.5,1\n", encoding="utf-8")
+
+        frames = load_mot_file(mot_file)
+
+        assert sorted(frames) == [1, 2]
+        np.testing.assert_array_equal(frames[1].ids, [-1])
+        np.testing.assert_array_equal(frames[2].ids, [5])
+        np.testing.assert_array_equal(frames[2].classes, [2])

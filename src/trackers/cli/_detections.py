@@ -19,6 +19,7 @@ Infrastructure module, not a command — see :mod:`trackers.cli` for the layout 
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -122,7 +123,10 @@ def read_detection_file(
                 )
 
             try:
-                frame_number = int(float(values[0]))
+                frame_value = float(values[0])
+                if not math.isfinite(frame_value):
+                    raise ValueError(f"frame number {values[0]} is not finite")
+                frame_number = int(frame_value)
                 if is_tlwh:
                     left, top, width, height = (float(value) for value in values[2:6])
                     x1, y1, x2, y2 = left, top, left + width, top + height

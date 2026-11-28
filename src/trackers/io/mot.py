@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import functools
+import math
 import operator
 from dataclasses import dataclass
 from pathlib import Path
@@ -161,6 +162,24 @@ class _MOTSequenceData:
     tracker_id_mapping: dict[int, int]
 
 
+def _integer_column(values: NDArray[np.float64], field: str, path: Path, frame: int) -> NDArray[np.intp]:
+    """Convert a MOT id or class column to integers, truncating like TrackEval's `astype(int)`.
+
+    Raises:
+        ValueError: If a value is not finite or does not fit `np.intp`, where the cast would
+            return an arbitrary integer.
+    """
+    limit = float(np.iinfo(np.intp).max)
+    with np.errstate(invalid="ignore"):
+        castable = np.isfinite(values) & (np.abs(values) < limit)
+    if not castable.all():
+        bad_value = values[~castable][0]
+        raise ValueError(
+            f"Invalid {field} in {path}, frame {frame}: {bad_value}, expected a finite number within the integer range"
+        )
+    return values.astype(np.intp)
+
+
 def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
     """Load a MOT Challenge format file.
 
@@ -228,9 +247,13 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
                 )
 
             try:
-                frame = int(float(row[0]))
+                frame_value = float(row[0])
             except ValueError as e:
                 raise ValueError(f"Invalid frame number in {path}: {row[0]}") from e
+            if not math.isfinite(frame_value):
+                raise ValueError(f"Invalid frame number in {path}: {row[0]}, expected a finite number")
+            # Truncated like TrackEval's `int(float(row[time_col]))`, so both read the same frames.
+            frame = int(frame_value)
 
             if frame not in frame_data:
                 frame_data[frame] = []
@@ -246,10 +269,14 @@ def load_mot_file(path: str | Path) -> dict[int, _MOTFrameData]:
         except ValueError as e:
             raise ValueError(f"Cannot convert data to float in {path}, frame {frame}") from e
 
-        ids = data[:, 1].astype(np.intp)
+        ids = _integer_column(data[:, 1], "id", path, frame)
         boxes = data[:, 2:6]
         confidences = data[:, 6] if data.shape[1] > 6 else np.ones(len(data))
-        classes = data[:, 7].astype(np.intp) if data.shape[1] > 7 else np.ones(len(data), dtype=np.intp)
+        classes = (
+            _integer_column(data[:, 7], "class", path, frame)
+            if data.shape[1] > 7
+            else np.ones(len(data), dtype=np.intp)
+        )
 
         result[frame] = _MOTFrameData(
             ids=ids,
